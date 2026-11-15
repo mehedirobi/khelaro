@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  Link,
+  NavLink,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   Menu,
   X,
@@ -10,331 +16,369 @@ import {
   ChevronDown,
   CircleUserRound,
   Search,
+  Users,
+  MapPin,
+  CalendarDays,
+  Wallet,
+  Home,
+  Info,
+  Mail,
+  Settings,
+  ShieldCheck,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000";
+const navLinks = [
+  {
+    name: "Home",
+    path: "/",
+    icon: Home,
+    end: true,
+    color: "text-blue-600",
+    activeColor: "bg-blue-50 text-blue-700",
+  },
+  {
+    name: "Find Turf",
+    path: "/turfs",
+    icon: Search,
+    color: "text-emerald-600",
+    activeColor: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    name: "About",
+    path: "/about",
+    icon: Info,
+    color: "text-violet-600",
+    activeColor: "bg-violet-50 text-violet-700",
+  },
+  {
+    name: "Contact",
+    path: "/contact",
+    icon: Mail,
+    color: "text-orange-600",
+    activeColor: "bg-orange-50 text-orange-700",
+  },
+];
+
+const adminLinks = [
+  {
+    name: "Manage Users",
+    path: "/admin/users",
+    icon: Users,
+    color: "text-blue-600",
+    activeColor: "bg-blue-50 text-blue-700",
+  },
+  {
+    name: "Manage Turfs",
+    path: "/admin/turfs",
+    icon: MapPin,
+    color: "text-emerald-600",
+    activeColor: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    name: "Manage Bookings",
+    path: "/admin/bookings",
+    icon: CalendarDays,
+    color: "text-violet-600",
+    activeColor: "bg-violet-50 text-violet-700",
+  },
+  {
+    name: "Revenue",
+    path: "/admin/revenue",
+    icon: Wallet,
+    color: "text-amber-600",
+    activeColor: "bg-amber-50 text-amber-700",
+  },
+];
+
+const getNavClass = ({ isActive }, link) => {
+  return `
+    flex items-center gap-2.5 rounded-full px-4 py-2.5
+    text-[13px] font-semibold transition-all duration-200
+    ${
+      isActive
+        ? `${link.activeColor} shadow-sm`
+        : "text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+    }
+  `;
+};
+
+const getMenuLinkClass = ({ isActive }, item) => {
+  return `
+    flex items-center gap-3 rounded-xl px-3 py-2.5
+    text-sm font-medium transition-colors duration-200
+    ${
+      isActive
+        ? `${item.activeColor} font-semibold`
+        : "text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+    }
+  `;
+};
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [userData, setUserData] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  const profileRef = useRef(null);
+
   const navigate = useNavigate();
+  const location = useLocation();
+
   const { currentUser, loading, logout } = useAuth();
 
-  const loadUserData = async () => {
-    if (!currentUser?.email) {
-      setUserData(null);
-      return;
-    }
+  // User role
+  const userRole = String(currentUser?.role || "user")
+    .trim()
+    .toLowerCase();
 
-    const email = currentUser.email.trim().toLowerCase();
+  const isAdmin = userRole === "admin";
+  const isOwner = userRole === "owner";
+  const isCustomer = !isAdmin && !isOwner;
 
-    const savedUser = localStorage.getItem("khelaro-user");
+  // Role-based routes
+  const dashboardPath = isAdmin
+    ? "/admin-dashboard"
+    : isOwner
+      ? "/owner-dashboard"
+      : "/dashboard";
 
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        const savedEmail = parsedUser?.email?.trim()?.toLowerCase();
+  const profilePath = isAdmin
+    ? "/admin-dashboard"
+    : isOwner
+      ? "/owner-dashboard/profile"
+      : "/dashboard/profile";
 
-        if (savedEmail === email) {
-          setUserData(parsedUser);
-        }
-      } catch {
-        localStorage.removeItem("khelaro-user");
-      }
-    }
+  const wishlistPath = "/dashboard/wishlist";
 
-    try {
-      setProfileLoading(true);
+  // User information
+  const userName =
+    currentUser?.displayName ||
+    currentUser?.email?.split("@")[0] ||
+    "User";
 
-      const response = await fetch(
-        `${API_URL}/users/${encodeURIComponent(email)}`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
+  const userEmail = currentUser?.email || "";
+  const userPhoto = currentUser?.photoURL || "";
+  const userInitial = userName.charAt(0).toUpperCase() || "U";
 
-      const data = await response.json();
+  const roleLabel = isAdmin
+    ? "Administrator"
+    : isOwner
+      ? "Turf Owner"
+      : "Customer";
 
-      if (!response.ok) {
-        console.error("Failed to load user:", data);
-        return;
-      }
+  const roleStyles = isAdmin
+    ? "bg-red-50 text-red-600"
+    : isOwner
+      ? "bg-blue-50 text-blue-600"
+      : "bg-emerald-50 text-emerald-700";
 
-      const mongoUser = data?.user || data;
-
-      if (!mongoUser) return;
-
-      const role = String(mongoUser.role || "user")
-        .trim()
-        .toLowerCase();
-
-      const finalUser = {
-        ...mongoUser,
-        uid: currentUser.uid || mongoUser.uid || "",
-        email,
-        role,
-      };
-
-      setUserData(finalUser);
-
-      localStorage.setItem(
-        "khelaro-user",
-        JSON.stringify(finalUser)
-      );
-
-      localStorage.setItem("khelaro-uid", currentUser.uid);
-    } catch (error) {
-      console.error("MongoDB user fetch error:", error);
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadUserData();
-  }, [currentUser]);
-
-  useEffect(() => {
-    const handleProfileUpdate = (event) => {
-      const updatedUser = event.detail;
-
-      if (!updatedUser) {
-        loadUserData();
-        return;
-      }
-
-      setUserData((previous) => ({
-        ...previous,
-        ...updatedUser,
-      }));
-
-      localStorage.setItem(
-        "khelaro-user",
-        JSON.stringify(updatedUser)
-      );
-    };
-
-    window.addEventListener(
-      "khelaro-profile-updated",
-      handleProfileUpdate
-    );
-
-    return () => {
-      window.removeEventListener(
-        "khelaro-profile-updated",
-        handleProfileUpdate
-      );
-    };
-  }, [currentUser]);
-
+  // Scroll effect
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 8);
+      setIsScrolled(window.scrollY > 10);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  const userRole = String(userData?.role || "user")
-    .trim()
-    .toLowerCase();
-
-  const isAdmin = userRole === "admin";
-  const isOwner = userRole === "owner";
-  const isCustomer = userRole === "user";
-
-  const dashboardPath = isAdmin
-    ? "/admin-dashboard"
-    : isOwner
-    ? "/owner-dashboard"
-    : "/dashboard";
-
-  const profilePath = isAdmin
-    ? "/admin-dashboard"
-    : isOwner
-    ? "/owner-dashboard/profile"
-    : "/dashboard/profile";
-
-  const wishlistPath = "/dashboard/wishlist";
-
-  const navLinks = [
-    {
-      name: "Home",
-      path: "/",
-      end: true,
-    },
-    {
-      name: "Find Turf",
-      path: "/turfs",
-      icon: Search,
-    },
-    {
-      name: "About",
-      path: "/about",
-    },
-    {
-      name: "Contact",
-      path: "/contact",
-    },
-  ];
-
-  const closeMenu = () => {
+  // Close menus when route changes
+  useEffect(() => {
     setIsMenuOpen(false);
-  };
-
-  const closeProfile = () => {
     setIsProfileOpen(false);
-  };
+  }, [location.pathname]);
 
+  // Close profile dropdown on outside click and Escape
+  useEffect(() => {
+    if (!isProfileOpen) return;
+
+    const handleOutsideClick = (event) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target)
+      ) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isProfileOpen]);
+
+  // Logout
   const handleLogout = async () => {
     try {
       await logout();
-
-      localStorage.removeItem("khelaro-user");
-      localStorage.removeItem("khelaro-uid");
-
-      setUserData(null);
       setIsProfileOpen(false);
       setIsMenuOpen(false);
-
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
 
-  const userName =
-    userData?.name?.trim() ||
-    currentUser?.displayName ||
-    currentUser?.email?.split("@")[0] ||
-    "User";
+  // Reusable navigation links
+  const renderNavLinks = (mobile = false) =>
+    navLinks.map((link) => {
+      const Icon = link.icon;
 
-  const userEmail =
-    userData?.email ||
-    currentUser?.email ||
-    "";
+      return (
+        <NavLink
+          key={link.path}
+          to={link.path}
+          end={link.end}
+          onClick={() => {
+            if (mobile) setIsMenuOpen(false);
+          }}
+          className={(props) =>
+            mobile
+              ? `
+                flex items-center gap-3 rounded-xl px-4 py-3
+                text-sm font-semibold transition-all duration-200
+                ${
+                  props.isActive
+                    ? `${link.activeColor} shadow-sm`
+                    : "text-gray-600 hover:bg-gray-50"
+                }
+              `
+              : getNavClass(props, link)
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Icon
+                size={mobile ? 19 : 16}
+                strokeWidth={2.2}
+                className={
+                  isActive ? "" : `${link.color} opacity-90`
+                }
+              />
+              <span>{link.name}</span>
+            </>
+          )}
+        </NavLink>
+      );
+    });
 
-  const userPhoto =
-    userData?.photoURL ||
-    userData?.photo ||
-    currentUser?.photoURL ||
-    "";
+  // Reusable dashboard menu links
+  const renderAdminLinks = (mobile = false) =>
+    adminLinks.map((item) => {
+      const Icon = item.icon;
 
-  const userInitial =
-    userName.charAt(0).toUpperCase() || "U";
+      return (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          onClick={() => {
+            setIsProfileOpen(false);
+            if (mobile) setIsMenuOpen(false);
+          }}
+          className={(props) =>
+            mobile
+              ? getMenuLinkClass(props, item)
+              : getMenuLinkClass(props, item)
+          }
+        >
+          <Icon size={17} className={item.color} />
+          <span>{item.name}</span>
+        </NavLink>
+      );
+    });
 
-  const roleLabel = isAdmin
-    ? "Administrator"
-    : isOwner
-    ? "Turf Owner"
-    : "Customer";
-
-  const isUserLoading = loading || profileLoading;
-
-  const getRoleColor = () => {
-    if (isAdmin) return "text-red-600 bg-red-50";
-    if (isOwner) return "text-blue-600 bg-blue-50";
-    return "text-green-600 bg-green-50";
-  };
+  const renderUserAvatar = (size = "h-9 w-9") => (
+    <div
+      className={`
+        ${size} flex shrink-0 items-center justify-center
+        overflow-hidden rounded-full bg-emerald-100
+        text-sm font-bold text-emerald-700
+        ring-2 ring-emerald-50
+      `}
+    >
+      {userPhoto ? (
+        <img
+          src={userPhoto}
+          alt={`${userName}'s profile`}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        userInitial
+      )}
+    </div>
+  );
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-all duration-300 ${
-        isScrolled
-          ? "border-gray-200/80 bg-white/90 shadow-sm backdrop-blur-xl"
-          : "border-gray-100 bg-white"
-      }`}
+      className={`
+        sticky top-0 z-50 w-full border-b
+        transition-all duration-300
+        ${
+          isScrolled
+            ? "border-gray-200/80 bg-white/95 shadow-sm backdrop-blur-xl"
+            : "border-gray-100 bg-white"
+        }
+      `}
     >
-      <div className="mx-auto flex h-[74px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+
         {/* Logo */}
         <Link
           to="/"
-          onClick={closeMenu}
+          onClick={() => setIsMenuOpen(false)}
+          aria-label="Khelaro Home"
           className="group flex shrink-0 items-center gap-2.5"
         >
-          <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-700 text-lg font-extrabold text-white shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
-            <span className="relative z-10">K</span>
-
-            <div className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-full" />
+          <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 shadow-sm transition-transform duration-300 group-hover:scale-105">
+            <span className="text-xl font-extrabold text-white">
+              K
+            </span>
+            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
           </div>
 
           <div className="leading-none">
-            <span className="block text-[20px] font-extrabold tracking-tight text-gray-950">
+            <span className="block text-[21px] font-extrabold tracking-tight text-gray-950">
               Khelaro
             </span>
-
-            <span className="mt-0.5 hidden text-[9px] font-medium uppercase tracking-[0.18em] text-gray-400 sm:block">
+            <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.19em] text-gray-400">
               Play. Book. Enjoy.
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-1 lg:flex">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-
-            return (
-              <NavLink
-                key={link.path}
-                to={link.path}
-                end={link.end}
-                className={({ isActive }) =>
-                  `group relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all duration-300 ${
-                    isActive
-                      ? "bg-green-50 text-green-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-950"
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {Icon && (
-                      <Icon
-                        size={15}
-                        strokeWidth={2}
-                        className={`transition-transform duration-300 ${
-                          isActive
-                            ? "scale-105"
-                            : "group-hover:scale-105"
-                        }`}
-                      />
-                    )}
-
-                    <span>{link.name}</span>
-
-                    <span
-                      className={`absolute bottom-1 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-green-600 transition-all duration-300 ${
-                        isActive
-                          ? "w-5 opacity-100"
-                          : "w-0 opacity-0 group-hover:w-3 group-hover:opacity-60"
-                      }`}
-                    />
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-1 rounded-full bg-gray-50/80 p-1 lg:flex"
+        >
+          {renderNavLinks()}
         </nav>
 
-        {/* Desktop Right Section */}
-        <div className="hidden items-center gap-2 lg:flex">
-          {isUserLoading ? (
+        {/* Desktop Actions */}
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+
+          {loading ? (
             <div className="flex items-center gap-2">
-              <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-100" />
-              <div className="h-10 w-28 animate-pulse rounded-xl bg-gray-100" />
+              <div className="h-10 w-24 animate-pulse rounded-full bg-gray-100" />
+              <div className="h-10 w-10 animate-pulse rounded-full bg-gray-100" />
             </div>
           ) : currentUser ? (
             <>
@@ -343,238 +387,158 @@ const Navbar = () => {
                 <NavLink
                   to={wishlistPath}
                   aria-label="Wishlist"
-                  className={({ isActive }) =>
-                    `group relative flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-300 ${
+                  title="Wishlist"
+                  className={({ isActive }) => `
+                    relative flex h-10 w-10 items-center justify-center
+                    rounded-full transition-all duration-200
+                    ${
                       isActive
-                        ? "border-red-100 bg-red-50 text-red-500"
-                        : "border-transparent text-gray-500 hover:border-red-100 hover:bg-red-50 hover:text-red-500"
-                    }`
-                  }
+                        ? "bg-rose-50 text-rose-600"
+                        : "text-rose-500 hover:bg-rose-50"
+                    }
+                  `}
                 >
-                  {({ isActive }) => (
-                    <>
-                      <Heart
-                        size={18}
-                        strokeWidth={isActive ? 2.2 : 1.9}
-                        className="transition-transform duration-300 group-hover:scale-110"
-                      />
-
-                      {isActive && (
-                        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                      )}
-                    </>
-                  )}
+                  <Heart size={19} strokeWidth={2} />
                 </NavLink>
               )}
 
               {/* Dashboard */}
               <NavLink
                 to={dashboardPath}
-                className={({ isActive }) =>
-                  `group flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-semibold transition-all duration-300 ${
+                end
+                className={({ isActive }) => `
+                  flex h-10 items-center gap-2 rounded-full
+                  border px-4 text-[13px] font-semibold
+                  transition-all duration-200
+                  ${
                     isActive
-                      ? "border-green-200 bg-green-50 text-green-700 shadow-sm"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-                  }`
-                }
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                  }
+                `}
               >
-                <LayoutDashboard
-                  size={17}
-                  strokeWidth={1.9}
-                  className="transition-transform duration-300 group-hover:scale-105"
-                />
-
-                <span>Dashboard</span>
+                <LayoutDashboard size={16} />
+                Dashboard
               </NavLink>
 
-              {/* Profile */}
-              <div className="relative ml-1">
+              {/* Profile Dropdown */}
+              <div className="relative ml-1" ref={profileRef}>
                 <button
                   type="button"
                   onClick={() =>
                     setIsProfileOpen((prev) => !prev)
                   }
-                  className={`group flex h-11 items-center gap-2 rounded-xl border bg-white px-2 py-1.5 transition-all duration-300 ${
-                    isProfileOpen
-                      ? "border-green-200 bg-green-50/50 shadow-sm"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
                   aria-expanded={isProfileOpen}
+                  aria-haspopup="true"
                   aria-label="Open profile menu"
+                  className={`
+                    flex h-11 items-center gap-2 rounded-full
+                    border px-2 py-1 transition-all duration-200
+                    ${
+                      isProfileOpen
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                    }
+                  `}
                 >
-                  {/* Avatar */}
-                  <div className="relative">
-                    {userPhoto ? (
-                      <img
-                        src={userPhoto}
-                        alt={userName}
-                        className="h-8 w-8 rounded-lg object-cover ring-2 ring-white"
-                      />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-100 to-green-200 text-sm font-bold text-green-700">
-                        {userInitial}
-                      </div>
-                    )}
-
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
-                  </div>
-
-                  <div className="hidden max-w-[110px] text-left xl:block">
-                    <p className="truncate text-xs font-bold text-gray-900">
-                      {userName}
-                    </p>
-
-                    <p className="mt-0.5 truncate text-[10px] text-gray-400">
-                      {roleLabel}
-                    </p>
-                  </div>
+                  {renderUserAvatar("h-8 w-8")}
 
                   <ChevronDown
                     size={15}
-                    className={`text-gray-400 transition-transform duration-300 ${
+                    className={`mr-1 text-gray-400 transition-transform duration-200 ${
                       isProfileOpen ? "rotate-180" : ""
                     }`}
                   />
                 </button>
 
-                {/* Profile Dropdown */}
+                {/* Dropdown */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-72 origin-top-right animate-[navbarDrop_180ms_ease-out] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
-                    {/* User Info */}
-                    <div className="border-b border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-[calc(100%+12px)] z-50 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)]"
+                  >
+                    {/* User Information */}
+                    <div className="border-b border-gray-100 bg-gray-50/70 p-4">
                       <div className="flex items-center gap-3">
-                        {userPhoto ? (
-                          <img
-                            src={userPhoto}
-                            alt={userName}
-                            className="h-12 w-12 rounded-xl object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-green-200 text-base font-bold text-green-700">
-                            {userInitial}
-                          </div>
-                        )}
+                        {renderUserAvatar("h-11 w-11")}
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-gray-900">
                             {userName}
                           </p>
-
-                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                          <p className="truncate text-xs text-gray-500">
                             {userEmail}
                           </p>
-
-                          <span
-                            className={`mt-1.5 inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getRoleColor()}`}
-                          >
-                            {roleLabel}
-                          </span>
                         </div>
                       </div>
+
+                      <span
+                        className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${roleStyles}`}
+                      >
+                        <ShieldCheck size={12} />
+                        {roleLabel}
+                      </span>
                     </div>
 
-                    {/* Menu */}
-                    <div className="p-2">
-                      <Link
+                    {/* Menu Links */}
+                    <div className="space-y-1 p-2">
+                      <NavLink
                         to={dashboardPath}
-                        onClick={closeProfile}
-                        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-green-50 hover:text-green-700"
+                        end
+                        role="menuitem"
+                        onClick={() => setIsProfileOpen(false)}
+                        className={(props) =>
+                          getMenuLinkClass(props, {
+                            activeColor:
+                              "bg-emerald-50 text-emerald-700",
+                          })
+                        }
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500 transition group-hover:bg-white group-hover:text-green-600">
-                          <LayoutDashboard size={16} />
-                        </span>
-
-                        <span>Dashboard</span>
-                      </Link>
+                        <LayoutDashboard
+                          size={17}
+                          className="text-emerald-600"
+                        />
+                        Dashboard
+                      </NavLink>
 
                       {isAdmin && (
                         <>
-                          <Link
-                            to="/admin/users"
-                            onClick={closeProfile}
-                            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:text-gray-950"
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
-                              <UserRound size={16} />
-                            </span>
-                            Manage Users
-                          </Link>
-
-                          <Link
-                            to="/admin/turfs"
-                            onClick={closeProfile}
-                            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:text-gray-950"
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
-                              <Search size={16} />
-                            </span>
-                            Manage Turfs
-                          </Link>
-
-                          <Link
-                            to="/admin/bookings"
-                            onClick={closeProfile}
-                            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:text-gray-950"
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
-                              <LayoutDashboard size={16} />
-                            </span>
-                            Manage Bookings
-                          </Link>
-
-                          <Link
-                            to="/admin/revenue"
-                            onClick={closeProfile}
-                            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:text-gray-950"
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
-                              <span className="text-xs font-bold">
-                                ৳
-                              </span>
-                            </span>
-                            Revenue
-                          </Link>
+                          <div className="my-2 border-t border-gray-100" />
+                          <p className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            Administration
+                          </p>
+                          {renderAdminLinks()}
                         </>
                       )}
 
-                      <Link
+                      <NavLink
                         to={profilePath}
-                        onClick={closeProfile}
-                        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:text-gray-950"
+                        role="menuitem"
+                        onClick={() => setIsProfileOpen(false)}
+                        className={(props) =>
+                          getMenuLinkClass(props, {
+                            activeColor:
+                              "bg-violet-50 text-violet-700",
+                          })
+                        }
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500 transition group-hover:bg-white group-hover:text-gray-700">
-                          <CircleUserRound size={16} />
-                        </span>
-
+                        <CircleUserRound
+                          size={17}
+                          className="text-violet-600"
+                        />
                         My Profile
-                      </Link>
-
-                      {isCustomer && (
-                        <Link
-                          to={wishlistPath}
-                          onClick={closeProfile}
-                          className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-red-50 hover:text-red-600"
-                        >
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 text-gray-500 transition group-hover:bg-white group-hover:text-red-500">
-                            <Heart size={16} />
-                          </span>
-
-                          Wishlist
-                        </Link>
-                      )}
+                      </NavLink>
                     </div>
 
                     {/* Logout */}
                     <div className="border-t border-gray-100 p-2">
                       <button
                         type="button"
+                        role="menuitem"
                         onClick={handleLogout}
-                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-600 transition-all duration-200 hover:bg-red-50"
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 transition group-hover:bg-white">
-                          <LogOut size={16} />
-                        </span>
-
+                        <LogOut size={17} />
                         Logout
                       </button>
                     </div>
@@ -587,253 +551,159 @@ const Navbar = () => {
               {/* Login */}
               <Link
                 to="/login"
-                className="group flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-semibold text-gray-600 transition-all duration-300 hover:bg-gray-50 hover:text-gray-950"
+                className="flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-950"
               >
-                <UserRound
-                  size={16}
-                  className="transition-transform duration-300 group-hover:scale-105"
-                />
+                <UserRound size={16} />
                 Login
               </Link>
 
-              {/* Register */}
+              {/* Get Started */}
               <Link
                 to="/register"
-                className="group relative flex h-10 items-center overflow-hidden rounded-xl bg-green-600 px-5 text-[13px] font-bold text-white shadow-sm shadow-green-600/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-md hover:shadow-green-600/20"
+                className="flex h-10 items-center gap-2 rounded-full bg-emerald-600 px-5 text-[13px] font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md active:translate-y-0"
               >
-                <span className="relative z-10">
-                  Get Started
-                </span>
-
-                <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-full" />
+                Get Started
+                <span aria-hidden="true">→</span>
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Toggle */}
         <button
           type="button"
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-300 lg:hidden ${
-            isMenuOpen
-              ? "border-green-200 bg-green-50 text-green-700"
-              : "border-gray-200 text-gray-700 hover:bg-gray-50"
-          }`}
-          aria-label={
-            isMenuOpen ? "Close menu" : "Open menu"
-          }
+          aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={isMenuOpen}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition-colors hover:bg-gray-50 lg:hidden"
         >
-          {isMenuOpen ? (
-            <X size={21} />
-          ) : (
-            <Menu size={21} />
-          )}
+          {isMenuOpen ? <X size={21} /> : <Menu size={21} />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="border-t border-gray-100 bg-white lg:hidden">
-          <div className="mx-auto max-w-7xl animate-[navbarMobile_220ms_ease-out] px-4 py-5 sm:px-6">
-            {/* Mobile User Card */}
-            {!isUserLoading && currentUser && (
-              <div className="mb-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  {userPhoto ? (
-                    <img
-                      src={userPhoto}
-                      alt={userName}
-                      className="h-11 w-11 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100 text-base font-bold text-green-700">
-                      {userInitial}
-                    </div>
-                  )}
+        <div className="border-t border-gray-100 bg-white shadow-lg lg:hidden">
+          <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-gray-900">
-                      {userName}
-                    </p>
+            {/* Mobile User Information */}
+            {!loading && currentUser && (
+              <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gray-50 p-3">
+                {renderUserAvatar("h-11 w-11")}
 
-                    <p className="truncate text-xs text-gray-500">
-                      {userEmail}
-                    </p>
-
-                    <span
-                      className={`mt-1.5 inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getRoleColor()}`}
-                    >
-                      {roleLabel}
-                    </span>
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-gray-900">
+                    {userName}
+                  </p>
+                  <p className="truncate text-xs text-gray-500">
+                    {userEmail}
+                  </p>
+                  <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold ${roleStyles}`}>
+                    {roleLabel}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Mobile Navigation */}
-            <nav className="flex flex-col gap-1">
-              {navLinks.map((link) => {
-                const Icon = link.icon;
+            {/* Main Navigation */}
+            <nav
+              aria-label="Mobile navigation"
+              className="flex flex-col gap-1"
+            >
+              {renderNavLinks(true)}
+            </nav>
 
-                return (
-                  <NavLink
-                    key={link.path}
-                    to={link.path}
-                    end={link.end}
-                    onClick={closeMenu}
-                    className={({ isActive }) =>
-                      `group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                        isActive
-                          ? "bg-green-50 text-green-700 shadow-sm"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-950"
-                      }`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {Icon && (
-                          <Icon
-                            size={17}
-                            className={`transition-transform duration-300 ${
-                              isActive
-                                ? "scale-105"
-                                : "group-hover:translate-x-0.5"
-                            }`}
-                          />
-                        )}
+            {/* User Navigation */}
+            {!loading && currentUser && (
+              <>
+                <div className="my-4 border-t border-gray-100" />
 
-                        <span>{link.name}</span>
+                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  My Account
+                </p>
 
-                        {isActive && (
-                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-green-600" />
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                );
-              })}
-
-              {!isUserLoading && currentUser && (
-                <>
-                  <div className="my-2 border-t border-gray-100" />
-
+                <div className="flex flex-col gap-1">
                   <NavLink
                     to={dashboardPath}
-                    onClick={closeMenu}
-                    className={({ isActive }) =>
-                      `group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                        isActive
-                          ? "bg-green-50 text-green-700"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`
+                    end
+                    onClick={() => setIsMenuOpen(false)}
+                    className={(props) =>
+                      getMenuLinkClass(props, {
+                        activeColor:
+                          "bg-emerald-50 text-emerald-700",
+                      })
                     }
                   >
                     <LayoutDashboard
                       size={18}
-                      className="transition-transform duration-300 group-hover:scale-105"
+                      className="text-emerald-600"
                     />
-
                     Dashboard
                   </NavLink>
-
-                  {isAdmin && (
-                    <>
-                      <NavLink
-                        to="/admin/users"
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <UserRound size={18} />
-                        Manage Users
-                      </NavLink>
-
-                      <NavLink
-                        to="/admin/turfs"
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <Search size={18} />
-                        Manage Turfs
-                      </NavLink>
-
-                      <NavLink
-                        to="/admin/bookings"
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <LayoutDashboard size={18} />
-                        Manage Bookings
-                      </NavLink>
-
-                      <NavLink
-                        to="/admin/revenue"
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <span className="text-sm font-bold">
-                          ৳
-                        </span>
-                        Revenue
-                      </NavLink>
-                    </>
-                  )}
 
                   {isCustomer && (
                     <NavLink
                       to={wishlistPath}
-                      onClick={closeMenu}
-                      className={({ isActive }) =>
-                        `group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                          isActive
-                            ? "bg-red-50 text-red-600"
-                            : "text-gray-700 hover:bg-red-50 hover:text-red-600"
-                        }`
+                      onClick={() => setIsMenuOpen(false)}
+                      className={(props) =>
+                        getMenuLinkClass(props, {
+                          activeColor:
+                            "bg-rose-50 text-rose-700",
+                        })
                       }
                     >
-                      <Heart size={18} />
+                      <Heart size={18} className="text-rose-500" />
                       Wishlist
                     </NavLink>
                   )}
 
+                  {isAdmin && (
+                    <>
+                      <div className="my-2 border-t border-gray-100" />
+                      <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        Administration
+                      </p>
+                      {renderAdminLinks(true)}
+                    </>
+                  )}
+
                   <NavLink
                     to={profilePath}
-                    onClick={closeMenu}
-                    className={({ isActive }) =>
-                      `group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                        isActive
-                          ? "bg-gray-100 text-gray-900"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`
+                    onClick={() => setIsMenuOpen(false)}
+                    className={(props) =>
+                      getMenuLinkClass(props, {
+                        activeColor:
+                          "bg-violet-50 text-violet-700",
+                      })
                     }
                   >
-                    <CircleUserRound size={18} />
+                    <CircleUserRound
+                      size={18}
+                      className="text-violet-600"
+                    />
                     My Profile
                   </NavLink>
-                </>
-              )}
-            </nav>
+                </div>
+              </>
+            )}
 
-            {/* Mobile Bottom Actions */}
+            {/* Mobile Actions */}
             <div className="mt-4 border-t border-gray-100 pt-4">
-              {isUserLoading ? (
-                <div className="h-12 animate-pulse rounded-xl bg-gray-100" />
-              ) : currentUser ? (
+              {!loading && currentUser ? (
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-all duration-300 hover:bg-red-100"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
                 >
                   <LogOut size={17} />
                   Logout
                 </button>
-              ) : (
+              ) : !loading ? (
                 <div className="grid grid-cols-2 gap-3">
                   <Link
                     to="/login"
-                    onClick={closeMenu}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-all duration-300 hover:bg-gray-50"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                   >
                     <UserRound size={17} />
                     Login
@@ -841,52 +711,19 @@ const Navbar = () => {
 
                   <Link
                     to="/register"
-                    onClick={closeMenu}
-                    className="flex items-center justify-center rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all duration-300 hover:bg-green-700"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
                   >
                     Get Started
                   </Link>
                 </div>
+              ) : (
+                <div className="h-11 animate-pulse rounded-xl bg-gray-100" />
               )}
             </div>
           </div>
         </div>
       )}
-
-      {/* Navbar Animations */}
-      <style>{`
-        @keyframes navbarDrop {
-          from {
-            opacity: 0;
-            transform: translateY(-6px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes navbarMobile {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
     </header>
   );
 };
