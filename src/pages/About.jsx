@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -15,19 +16,19 @@ const features = [
     icon: MapPin,
     title: "Find Nearby Turfs",
     description:
-      "Discover quality sports turfs across Dhaka based on location, sport, and availability.",
+      "Discover sports turfs across Dhaka based on your preferred location, sport, and availability.",
   },
   {
     icon: Clock3,
-    title: "Book in Minutes",
+    title: "Easy Slot Booking",
     description:
-      "Choose your preferred date and time slot and complete your booking without unnecessary hassle.",
+      "Choose your preferred date and time slot and book your game in just a few simple steps.",
   },
   {
     icon: ShieldCheck,
     title: "Reliable Booking",
     description:
-      "Get clear booking information and avoid the confusion of calling multiple turf owners.",
+      "Access clear booking information and manage your reservations without unnecessary hassle.",
   },
 ];
 
@@ -35,7 +36,7 @@ const values = [
   "Simple and transparent booking",
   "Verified turf listings",
   "Clear pricing and availability",
-  "Better experience for players and turf owners",
+  "A better experience for players and owners",
 ];
 
 const missionCards = [
@@ -43,72 +44,72 @@ const missionCards = [
     icon: Users,
     title: "For Players",
     description:
-      "Find, compare, and book sports turfs with less effort.",
+      "Discover, compare, and book sports turfs with less effort.",
+    iconClass: "bg-blue-50 text-blue-600",
   },
   {
     icon: Target,
     title: "For Owners",
     description:
-      "Manage turf listings, bookings, schedules, and revenue from one place.",
+      "Manage turf listings, bookings, schedules, and revenue in one place.",
+    iconClass: "bg-purple-50 text-purple-600",
   },
   {
     icon: Zap,
-    title: "Fast Experience",
+    title: "Simple Experience",
     description:
-      "A streamlined experience designed around real booking needs.",
+      "Enjoy a streamlined booking process designed around your needs.",
+    iconClass: "bg-amber-50 text-amber-600",
   },
   {
     icon: ShieldCheck,
     title: "Trusted Platform",
     description:
-      "Focused on transparent information and reliable bookings.",
+      "Make informed booking decisions with clear and reliable information.",
+    iconClass: "bg-emerald-50 text-emerald-600",
   },
 ];
 
 const About = () => {
   return (
     <main className="overflow-hidden bg-white">
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-gray-100 bg-gray-950">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-green-500/10 blur-3xl" />
-          <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-green-400/10 blur-3xl" />
-          <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-green-500/[0.03] blur-3xl" />
-        </div>
+      {/* Hero Section */}
+      <section className="relative border-b border-gray-100 bg-gradient-to-b from-emerald-50/70 to-white">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-emerald-100/50 blur-3xl" />
 
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="max-w-3xl animate-[fadeUp_0.7s_ease-out_both]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-green-400">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-emerald-700 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
               About Khelaro
-            </p>
+            </span>
 
-            <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-6 text-3xl font-bold leading-tight tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
               Making sports turf booking{" "}
-              <span className="text-green-400">simple.</span>
+              <span className="text-emerald-600">simple.</span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-base leading-7 text-gray-400 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-gray-600 sm:text-base sm:leading-8">
               Khelaro is a modern turf discovery and booking platform
-              built for sports lovers in Dhaka. We make it easier to
-              find the right turf, check availability, and book your
-              game in just a few steps.
+              built for sports lovers in Dhaka. Find the right turf,
+              check availability, and book your next game with ease.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/turfs"
-                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-500 hover:shadow-xl hover:shadow-green-900/25 focus:outline-none focus:ring-4 focus:ring-green-500/20 active:scale-[0.98]"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-emerald-600/15 transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 Explore Turfs
                 <ArrowRight
                   size={17}
-                  className="transition-transform duration-300 group-hover:translate-x-1"
+                  className="transition-transform group-hover:translate-x-1"
                 />
               </Link>
 
               <Link
                 to="/contact"
-                className="inline-flex items-center justify-center rounded-xl border border-gray-700 px-5 py-3 text-sm font-semibold text-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-gray-500 hover:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-700/30 active:scale-[0.98]"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 Get in Touch
               </Link>
@@ -117,141 +118,136 @@ const About = () => {
         </div>
       </section>
 
-      {/* Mission */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-          <div className="animate-[fadeUp_0.7s_ease-out_both]">
-            <p className="text-sm font-semibold uppercase tracking-wider text-green-600">
+      {/* Mission Section */}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <div className="max-w-xl">
+            <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">
               Our Mission
             </p>
 
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-gray-900 sm:text-4xl">
               Spend less time searching.
-              <br />
-              Spend more time playing.
+              <span className="block text-emerald-600">
+                Spend more time playing.
+              </span>
             </h2>
 
-            <p className="mt-5 text-sm leading-7 text-gray-500 sm:text-base">
+            <p className="mt-5 text-sm leading-7 text-gray-600 sm:text-base">
               Finding a good sports turf should not require endless
               phone calls, messages, or uncertainty about available
               slots. Khelaro brings turf discovery and booking into
-              one simple platform.
+              one convenient platform.
             </p>
 
-            <p className="mt-4 text-sm leading-7 text-gray-500 sm:text-base">
-              Our goal is to create a trusted marketplace where
+            <p className="mt-4 text-sm leading-7 text-gray-600 sm:text-base">
+              Our goal is to create a reliable marketplace where
               players can confidently book their games and turf
               owners can efficiently manage their facilities.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {missionCards.map((card, index) => {
+            {missionCards.map((card) => {
               const Icon = card.icon;
 
               return (
-                <div
+                <article
                   key={card.title}
-                  className="group rounded-2xl border border-gray-200 bg-gray-50 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-green-100 hover:bg-white hover:shadow-lg hover:shadow-gray-200/50 animate-[fadeUp_0.6s_ease-out_both]"
-                  style={{
-                    animationDelay: `${index * 80}ms`,
-                  }}
+                  className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-100 hover:bg-white hover:shadow-lg hover:shadow-gray-200/50 sm:p-6"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100 text-green-600 transition-all duration-300 group-hover:scale-105 group-hover:bg-green-600 group-hover:text-white">
-                    <Icon size={21} />
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.iconClass}`}
+                  >
+                    <Icon size={21} strokeWidth={2} />
                   </div>
 
-                  <h3 className="mt-5 font-semibold text-gray-900">
+                  <h3 className="mt-4 text-base font-semibold text-gray-900">
                     {card.title}
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-gray-500">
                     {card.description}
                   </p>
-                </div>
+                </article>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* Why Khelaro */}
-      <section className="border-y border-gray-100 bg-gray-50">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-          <div className="max-w-2xl animate-[fadeUp_0.6s_ease-out_both]">
-            <p className="text-sm font-semibold uppercase tracking-wider text-green-600">
+      {/* Why Khelaro Section */}
+      <section className="border-y border-gray-100 bg-gray-50/70">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">
               Why Khelaro
             </p>
 
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
-              Built around the way people actually play
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Built around the way you play
             </h2>
 
-            <p className="mt-4 text-sm leading-6 text-gray-500">
-              Everything on Khelaro is designed to make the journey
-              from finding a turf to starting your game easier.
+            <p className="mt-4 text-sm leading-7 text-gray-500 sm:text-base">
+              From discovering a turf to booking your next session,
+              every step is designed to make your experience easier.
             </p>
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {features.map((feature, index) => {
+            {features.map((feature) => {
               const Icon = feature.icon;
 
               return (
-                <div
+                <article
                   key={feature.title}
-                  className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-green-100 hover:shadow-lg hover:shadow-gray-200/50 animate-[fadeUp_0.6s_ease-out_both]"
-                  style={{
-                    animationDelay: `${index * 90}ms`,
-                  }}
+                  className="rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-100 hover:shadow-lg hover:shadow-gray-200/50"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-600 transition-all duration-300 group-hover:scale-105 group-hover:bg-green-600 group-hover:text-white">
-                    <Icon size={21} />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <Icon size={22} strokeWidth={2} />
                   </div>
 
-                  <h3 className="mt-5 font-semibold text-gray-900">
+                  <h3 className="mt-5 text-base font-semibold text-gray-900">
                     {feature.title}
                   </h3>
 
-                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                  <p className="mt-2 text-sm leading-7 text-gray-500">
                     {feature.description}
                   </p>
-                </div>
+                </article>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* Values */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-3xl text-center animate-[fadeUp_0.6s_ease-out_both]">
-          <p className="text-sm font-semibold uppercase tracking-wider text-green-600">
+      {/* Values Section */}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">
             What We Believe
           </p>
 
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             A better way to book your game
           </h2>
 
-          <p className="mt-4 text-sm leading-6 text-gray-500">
-            We are building Khelaro with a focus on convenience,
+          <p className="mt-4 text-sm leading-7 text-gray-500 sm:text-base">
+            We are building Khelaro around convenience,
             transparency, and a better sports experience.
           </p>
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
-          {values.map((value, index) => (
+        <div className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
+          {values.map((value) => (
             <div
               key={value}
-              className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-green-100 hover:bg-green-50/40 hover:shadow-sm animate-[fadeUp_0.5s_ease-out_both]"
-              style={{
-                animationDelay: `${index * 70}ms`,
-              }}
+              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 transition-colors hover:border-emerald-100 hover:bg-emerald-50/40"
             >
               <CheckCircle2
-                size={20}
-                className="shrink-0 text-green-600 transition-transform duration-300 group-hover:scale-110"
+                size={19}
+                className="shrink-0 text-emerald-600"
+                strokeWidth={2}
               />
 
               <span className="text-sm font-medium text-gray-700">
@@ -262,58 +258,30 @@ const About = () => {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative overflow-hidden bg-green-600">
-        <div className="pointer-events-none absolute -left-20 top-0 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-black/10 blur-3xl" />
-
-        <div className="relative mx-auto max-w-7xl px-4 py-14 text-center sm:px-6 lg:px-8 lg:py-16">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
+      {/* CTA Section */}
+      <section className="bg-emerald-600">
+        <div className="mx-auto max-w-7xl px-4 py-14 text-center sm:px-6 sm:py-16 lg:px-8">
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             Ready to find your next game?
           </h2>
 
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-green-50">
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-emerald-50 sm:text-base">
             Explore sports turfs across Dhaka and book your next
             session with Khelaro.
           </p>
 
           <Link
             to="/turfs"
-            className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-green-700 shadow-lg shadow-green-900/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-white/30 active:scale-[0.98]"
+            className="group mt-7 inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-600"
           >
             Find a Turf
             <ArrowRight
               size={17}
-              className="transition-transform duration-300 group-hover:translate-x-1"
+              className="transition-transform group-hover:translate-x-1"
             />
           </Link>
         </div>
       </section>
-
-      <style>{`
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(16px);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-            scroll-behavior: auto !important;
-          }
-        }
-      `}</style>
     </main>
   );
 };
