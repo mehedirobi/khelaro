@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -6,131 +7,96 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+const benefits = [
+  "Verified turf listings",
+  "Easy booking process",
+  "Flexible playing slots",
+];
+
 const FinalCTA = () => {
   return (
-    <section className="relative overflow-hidden bg-gray-50 px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
-      {/* Background decoration */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-green-500/[0.06] blur-3xl"
-        aria-hidden="true"
-      />
-
-      <div className="relative mx-auto max-w-5xl">
-        <div className="relative overflow-hidden rounded-[28px] bg-gray-950 px-6 py-14 text-center shadow-2xl shadow-gray-900/10 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-          {/* Glow */}
+    <section
+      aria-labelledby="final-cta-heading"
+      className="relative overflow-hidden bg-gray-50 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+    >
+      <div className="mx-auto max-w-6xl">
+        <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white px-6 py-14 text-center shadow-sm shadow-emerald-950/[0.03] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+          {/* Background decoration */}
           <div
-            className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-green-500/15 blur-3xl"
             aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-emerald-100/70 blur-3xl"
           />
 
           <div
-            className="pointer-events-none absolute -bottom-32 -right-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"
             aria-hidden="true"
+            className="pointer-events-none absolute -bottom-32 -left-24 -z-10 h-72 w-72 rounded-full bg-green-100/60 blur-3xl"
           />
 
-          {/* Grid pattern */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.035]"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
-              backgroundSize: "42px 42px",
-            }}
-            aria-hidden="true"
-          />
-
-          <div className="relative mx-auto max-w-2xl">
+          <div className="mx-auto max-w-2xl">
             {/* Icon */}
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-green-400/20 bg-green-500/10 text-green-400 shadow-lg shadow-green-500/5">
-              <Search size={23} strokeWidth={2} />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+              <Search size={24} strokeWidth={2} />
             </div>
 
             {/* Badge */}
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">
-              <MapPin size={12} className="text-green-400" />
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700">
+              <MapPin size={14} />
               Your next game starts here
             </div>
 
             {/* Heading */}
-            <h2 className="mt-5 text-3xl font-extrabold tracking-[-0.025em] text-white sm:text-4xl lg:text-[44px] lg:leading-tight">
+            <h2
+              id="final-cta-heading"
+              className="mt-6 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl"
+            >
               Ready for your{" "}
-              <span className="text-green-400">next game?</span>
+              <span className="text-emerald-600">next game?</span>
             </h2>
 
             {/* Description */}
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-gray-400 sm:text-base">
-              Find a turf near you, choose an available slot, and get
-              your game started without the hassle.
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-gray-600 sm:text-base">
+              Discover nearby turfs, explore playing options, and book
+              your preferred slot. Your next game is just a few clicks away.
             </p>
 
             {/* Benefits */}
-            <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2">
-              <span className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                <CheckCircle2
-                  size={15}
-                  className="text-green-500"
-                />
-                Verified turfs
-              </span>
-
-              <span className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                <CheckCircle2
-                  size={15}
-                  className="text-green-500"
-                />
-                Easy booking
-              </span>
-
-              <span className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                <CheckCircle2
-                  size={15}
-                  className="text-green-500"
-                />
-                Available slots
-              </span>
-            </div>
+            <ul className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3">
+              {benefits.map((benefit) => (
+                <li
+                  key={benefit}
+                  className="flex items-center gap-2 text-xs font-medium text-gray-600 sm:text-sm"
+                >
+                  <CheckCircle2
+                    size={16}
+                    className="shrink-0 text-emerald-600"
+                    aria-hidden="true"
+                  />
+                  {benefit}
+                </li>
+              ))}
+            </ul>
 
             {/* CTA */}
             <Link
               to="/turfs"
-              className="group mt-8 inline-flex items-center gap-2.5 rounded-xl bg-green-500 px-6 py-3.5 text-sm font-bold text-gray-950 shadow-lg shadow-green-500/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-xl hover:shadow-green-500/20"
+              className="group mt-9 inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-emerald-600 px-7 py-3.5 text-sm font-bold text-white shadow-md shadow-emerald-600/15 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
             >
-              Find a turf
+              Find a Turf
 
               <ArrowRight
                 size={17}
                 strokeWidth={2.2}
-                className="transition-transform duration-300 group-hover:translate-x-1"
+                className="transition-transform duration-200 group-hover:translate-x-1"
+                aria-hidden="true"
               />
             </Link>
+
+            <p className="mt-4 text-xs text-gray-400">
+              Find your ground. Book your game. Play more.
+            </p>
           </div>
         </div>
       </div>
-
-      {/* Entrance animation */}
-      <style>{`
-        .final-cta {
-          animation: finalCtaFade 650ms ease-out both;
-        }
-
-        @keyframes finalCtaFade {
-          from {
-            opacity: 0;
-            transform: translateY(14px);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .final-cta {
-            animation: none;
-          }
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
@@ -6,12 +7,16 @@ import {
   Heart,
   User,
   LogOut,
+  Loader2,
 } from "lucide-react";
+
 import useAuth from "../../hooks/useAuth";
 
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3000"
-).replace(/\/$/, "");
+).replace(/\/+$/, "");
+
+const CACHE_KEY = "khelaro-user";
 
 const menuItems = [
   {
@@ -36,75 +41,132 @@ const menuItems = [
   },
 ];
 
+const getInitials = (name = "User") => {
+  const words = name.trim().split(/\s+/);
+
+  if (words.length > 1) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+
+  return name.charAt(0).toUpperCase() || "U";
+};
+
 const DashboardSidebar = () => {
   const { currentUser, logout } = useAuth();
-  const [userData, setUserData] = useState(null);
 
+  const [userData, setUserData] = useState(null);
+  const [imageError, setImageError] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const userEmail = currentUser?.email?.trim().toLowerCase() || "";
+
+  // Load user data
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadUserData = async () => {
-      if (!currentUser?.email) {
+      if (!userEmail) {
         setUserData(null);
         return;
       }
 
-      const email = currentUser.email.trim().toLowerCase();
+      // Read cached user only when email matches
+      try {
+        const cachedUser = localStorage.getItem(CACHE_KEY);
 
-      // Show cached user immediately if available.
-      const savedUser = localStorage.getItem("khelaro-user");
+        if (cachedUser) {
+          const parsedUser = JSON.parse(cachedUser);
 
-      if (savedUser) {
-        try {
-          setUserData(JSON.parse(savedUser));
-        } catch {
-          localStorage.removeItem("khelaro-user");
+          if (
+            parsedUser?.email?.trim().toLowerCase() === userEmail
+          ) {
+            setUserData(parsedUser);
+          } else {
+            setUserData(null);
+          }
+        } else {
+          setUserData(null);
         }
+      } catch (error) {
+        console.error("User cache error:", error);
+        localStorage.removeItem(CACHE_KEY);
+        setUserData(null);
       }
 
       try {
         const response = await fetch(
-          `${API_URL}/users/${encodeURIComponent(email)}`
+          `${API_URL}/users/${encodeURIComponent(userEmail)}`,
+          {
+            signal: controller.signal,
+          }
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to load user (${response.status})`);
+          throw new Error(
+            `Failed to load user (${response.status})`
+          );
         }
 
         const data = await response.json();
         const mongoUser = data?.user || data;
 
+        if (!mongoUser || typeof mongoUser !== "object") {
+          throw new Error("Invalid user response.");
+        }
+
+        if (controller.signal.aborted) return;
+
         setUserData(mongoUser);
+
         localStorage.setItem(
-          "khelaro-user",
+          CACHE_KEY,
           JSON.stringify(mongoUser)
         );
       } catch (error) {
-        console.error("Sidebar user fetch error:", error);
+        if (error.name !== "AbortError") {
+          console.error("Sidebar user fetch error:", error);
+        }
       }
     };
 
     loadUserData();
-  }, [currentUser?.email]);
 
+    return () => controller.abort();
+  }, [userEmail]);
+
+  // Reset profile image when user changes
+  useEffect(() => {
+    setImageError(false);
+  }, [userEmail]);
+
+  // User information
   const userName =
-    userData?.name ||
+    userData?.name?.trim() ||
     currentUser?.displayName ||
-    currentUser?.email?.split("@")[0] ||
+    userEmail.split("@")[0] ||
     "User";
 
-  const userEmail = userData?.email || currentUser?.email || "";
+  const displayedEmail = userData?.email || currentUser?.email || "";
 
   const userPhoto = userData?.photoURL || currentUser?.photoURL || "";
 
-  const userInitial = userName.charAt(0).toUpperCase() || "U";
+  const userInitials = getInitials(userName);
 
+  // Logout
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+
     try {
+      setIsLoggingOut(true);
+
       await logout();
 
-      localStorage.removeItem("khelaro-user");
+      localStorage.removeItem(CACHE_KEY);
       localStorage.removeItem("khelaro-uid");
     } catch (error) {
       console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -124,13 +186,16 @@ const DashboardSidebar = () => {
         </Link>
       </div>
 
-      {/* User */}
+      {/* User profile */}
       <div className="shrink-0 border-b border-gray-100 p-5">
         <div className="flex items-center gap-3">
-          {userPhoto ? (
+          {userPhoto && !imageError ? (
             <img
               src={userPhoto}
               alt={`${userName}'s profile`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImageError(true)}
               className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-gray-100"
             />
           ) : (
@@ -138,11 +203,11 @@ const DashboardSidebar = () => {
               aria-hidden="true"
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-50 text-sm font-bold text-green-700 ring-2 ring-green-100"
             >
-              {userInitial}
+              {userInitials}
             </div>
           )}
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p
               className="truncate text-sm font-semibold text-gray-900"
               title={userName}
@@ -152,9 +217,9 @@ const DashboardSidebar = () => {
 
             <p
               className="truncate text-xs text-gray-500"
-              title={userEmail}
+              title={displayedEmail}
             >
-              {userEmail}
+              {displayedEmail || "Loading account..."}
             </p>
           </div>
         </div>
@@ -165,40 +230,36 @@ const DashboardSidebar = () => {
         aria-label="Dashboard"
         className="flex-1 space-y-1 overflow-y-auto p-4"
       >
-        {menuItems.map((item) => {
-          const Icon = item.icon;
+        {menuItems.map(({ name, path, icon: Icon }) => (
+          <NavLink
+            key={path}
+            to={path}
+            end={path === "/dashboard"}
+            className={({ isActive }) =>
+              [
+                "group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium",
+                "transition-colors duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/40",
+                isActive
+                  ? "bg-green-50 text-green-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+              ].join(" ")
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon
+                  size={19}
+                  strokeWidth={isActive ? 2.2 : 2}
+                  className="shrink-0 transition-transform duration-200 group-hover:scale-105"
+                  aria-hidden="true"
+                />
 
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/dashboard"}
-              className={({ isActive }) =>
-                [
-                  "group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium",
-                  "transition-all duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-green-500/30",
-                  isActive
-                    ? "bg-green-50 text-green-700 shadow-sm"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                ].join(" ")
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    size={19}
-                    strokeWidth={isActive ? 2.2 : 2}
-                    className="shrink-0 transition-transform duration-200 group-hover:scale-105"
-                    aria-hidden="true"
-                  />
-
-                  <span>{item.name}</span>
-                </>
-              )}
-            </NavLink>
-          );
-        })}
+                <span>{name}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       {/* Logout */}
@@ -206,14 +267,26 @@ const DashboardSidebar = () => {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-all duration-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+          disabled={isLoggingOut}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <LogOut
-            size={19}
-            className="shrink-0"
-            aria-hidden="true"
-          />
-          <span>Logout</span>
+          {isLoggingOut ? (
+            <Loader2
+              size={19}
+              className="shrink-0 animate-spin"
+              aria-hidden="true"
+            />
+          ) : (
+            <LogOut
+              size={19}
+              className="shrink-0"
+              aria-hidden="true"
+            />
+          )}
+
+          <span>
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </span>
         </button>
       </div>
     </aside>
