@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+
+import { useContext, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Eye,
   EyeOff,
@@ -14,37 +15,188 @@ import {
   ShieldCheck,
   Sparkles,
   Building2,
+  CalendarCheck,
+  MapPin,
+  Trophy,
 } from "lucide-react";
 
-import { AuthContext } from "../contexts/AuthProvider";
-import { useContext } from "react";
+import { AuthContext } from "../contexts/AuthProvider.jsx";
+
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3000"
+).replace(/\/$/, "");
+
+const FEATURES = [
+  {
+    icon: MapPin,
+    title: "Discover turfs",
+    description: "Find sports venues near you.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Easy booking",
+    description: "Reserve your preferred time slot.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Book confidently",
+    description: "Manage your bookings with ease.",
+  },
+];
+
+const getPasswordStrength = (password) => {
+  if (!password) {
+    return {
+      label: "",
+      width: "0%",
+      color: "bg-gray-200",
+      text: "text-gray-400",
+    };
+  }
+
+  if (password.length < 6) {
+    return {
+      label: "Weak password",
+      width: "25%",
+      color: "bg-red-500",
+      text: "text-red-600",
+    };
+  }
+
+  let score = 1;
+
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) {
+    return {
+      label: "Fair password",
+      width: "45%",
+      color: "bg-amber-500",
+      text: "text-amber-600",
+    };
+  }
+
+  if (score <= 3) {
+    return {
+      label: "Good password",
+      width: "70%",
+      color: "bg-green-400",
+      text: "text-green-600",
+    };
+  }
+
+  return {
+    label: "Strong password",
+    width: "100%",
+    color: "bg-green-600",
+    text: "text-green-700",
+  };
+};
+
+const getErrorMessage = (error) => {
+  if (error.code) {
+    switch (error.code) {
+      case "auth/email-already-in-use":
+        return "An account already exists with this email address.";
+
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+
+      case "auth/weak-password":
+        return "Your password is too weak. Please choose a stronger password.";
+
+      case "auth/network-request-failed":
+        return "Network error. Please check your internet connection.";
+
+      case "auth/operation-not-allowed":
+        return "Email and password registration is currently unavailable.";
+
+      case "auth/too-many-requests":
+        return "Too many attempts. Please try again later.";
+
+      default:
+        break;
+    }
+  }
+
+  if (error.message === "BACKEND_CONNECTION_ERROR") {
+    return "Unable to connect to the Khelaro server. Please check your internet connection or backend configuration.";
+  }
+
+  if (error.message === "FIREBASE_USER_NOT_CREATED") {
+    return "Registration could not be completed. Please try again.";
+  }
+
+  return error.message || "Registration failed. Please try again.";
+};
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, loading } = useContext(AuthContext);
+  const [searchParams] = useSearchParams();
+
+  const { register, loading: authLoading } = useContext(AuthContext);
+
+  const initialRole =
+    searchParams.get("role")?.toLowerCase() === "owner"
+      ? "owner"
+      : "customer";
+
+  const [role, setRole] = useState(initialRole);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
-
-  const [role, setRole] = useState("customer");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const isLoading = submitting || authLoading;
+
+  const passwordStrength = useMemo(
+    () => getPasswordStrength(formData.password),
+    [formData.password]
+  );
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (error) setError("");
+  };
+
+  const handleRoleChange = (selectedRole) => {
+    setRole(selectedRole);
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (isLoading) return;
+
     setError("");
 
-    const form = e.target;
+    const name = formData.name.trim();
+    const email = formData.email.trim().toLowerCase();
+    const phone = formData.phone.trim();
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
 
-    const name = form.name.value.trim();
-    const email = form.email.value.trim();
-    const phone = form.phone.value.trim();
-    const password = form.password.value;
-    const confirmPassword = form.confirmPassword.value;
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please complete all required fields.");
       return;
     }
 
@@ -53,16 +205,24 @@ const Register = () => {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     try {
-      const userRole =
-        role === "customer" ? "user" : "owner";
+      setSubmitting(true);
 
-      const firebaseUser = await register(
-        name,
-        email,
-        password
-      );
+      const userRole = role === "customer" ? "user" : "owner";
 
+      // Step 1: Create Firebase account
+      const firebaseUser = await register(name, email, password);
+
+      if (!firebaseUser?.uid) {
+        throw new Error("FIREBASE_USER_NOT_CREATED");
+      }
+
+      // Step 2: Prepare MongoDB user profile
       const userInfo = {
         uid: firebaseUser.uid,
         name,
@@ -71,195 +231,184 @@ const Register = () => {
         role: userRole,
       };
 
-      const response = await fetch(
-        "http://localhost:3000/users",
-        {
+      // Step 3: Save profile to backend
+      let response;
+
+      try {
+        response = await fetch(`${API_URL}/users`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
           body: JSON.stringify(userInfo),
-        }
-      );
+        });
+      } catch (fetchError) {
+        console.error("Registration API error:", fetchError);
+        throw new Error("BACKEND_CONNECTION_ERROR");
+      }
 
-      const data = await response.json();
+      let data = null;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data?.message ||
-            "Failed to save user information."
+          data?.message || "Failed to save user information."
         );
       }
 
-      setTimeout(() => {
-        navigate(
-          userRole === "owner"
-            ? "/owner-dashboard"
-            : "/dashboard"
-        );
-      }, 1000);
+      // Step 4: Redirect according to role
+      navigate(
+        userRole === "owner"
+          ? "/owner-dashboard"
+          : "/dashboard",
+        { replace: true }
+      );
     } catch (error) {
       console.error("Registration error:", error);
 
       if (
-        error.message ===
-        "Failed to save user information."
+        error.message?.includes("Failed to save user information") ||
+        error.message === "BACKEND_CONNECTION_ERROR"
       ) {
         setError(
-          "Account created, but we couldn't save your profile. Please contact support."
+          "Your Firebase account may have been created, but we couldn't save your Khelaro profile. Please contact support before trying to register again."
         );
-      } else if (
-        error.message?.includes(
-          "Failed to save user information"
-        )
-      ) {
-        setError(error.message);
-      } else if (
-        error.message?.includes("NetworkError") ||
-        error.message?.includes("Failed to fetch")
-      ) {
-        setError(
-          "Cannot connect to the server. Please make sure the backend is running."
-        );
+      } else {
+        setError(getErrorMessage(error));
       }
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  const getPasswordStrength = () => {
-    const password =
-      document.getElementById("password")?.value || "";
-
-    if (!password) {
-      return {
-        label: "",
-        width: "0%",
-        text: "text-gray-400",
-      };
-    }
-
-    if (password.length < 6) {
-      return {
-        label: "Weak password",
-        width: "30%",
-        text: "text-red-500",
-      };
-    }
-
-    if (
-      password.length >= 8 &&
-      /[A-Z]/.test(password) &&
-      /[0-9]/.test(password)
-    ) {
-      return {
-        label: "Strong password",
-        width: "100%",
-        text: "text-green-600",
-      };
-    }
-
-    return {
-      label: "Good password",
-      width: "65%",
-      text: "text-amber-500",
-    };
-  };
-
-  const passwordStrength = getPasswordStrength();
 
   return (
-    <main className="min-h-[calc(100vh-72px)] overflow-hidden bg-gray-50">
-      <div className="mx-auto flex min-h-[calc(100vh-72px)] max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl shadow-gray-200/40 lg:grid-cols-2">
-          {/* =========================
-              LEFT BRAND PANEL
-          ========================== */}
-          <section className="relative hidden overflow-hidden bg-gray-950 p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
-            {/* Background decoration */}
-            <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-green-500/10 blur-3xl" />
+    <main className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#f8faf9] px-4 py-8 sm:px-6 lg:px-8">
+      {/* Background decoration */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-green-100/60 blur-3xl"
+      />
 
-            <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-green-400/10 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-emerald-100/50 blur-3xl"
+      />
 
-            <div className="absolute right-20 top-1/2 h-32 w-32 rounded-full border border-green-500/10" />
+      <div className="relative mx-auto flex min-h-[calc(100vh-136px)] max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-[0_24px_80px_-35px_rgba(15,23,42,0.18)] lg:grid-cols-2">
 
-            <div className="relative z-10 animate-[fadeIn_0.7s_ease-out]">
+          {/* Left brand panel */}
+          <section className="relative hidden overflow-hidden bg-[#f0fdf4] p-10 lg:flex lg:flex-col lg:justify-between xl:p-14">
+            {/* Decorative elements */}
+            <div
+              aria-hidden="true"
+              className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-green-200/70"
+            />
+
+            <div
+              aria-hidden="true"
+              className="absolute -right-12 -top-12 h-56 w-56 rounded-full border border-green-200/70"
+            />
+
+            <div
+              aria-hidden="true"
+              className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-green-200/30 blur-3xl"
+            />
+
+            <div className="relative z-10">
               {/* Logo */}
               <Link
                 to="/"
-                className="group inline-flex items-center gap-2.5"
+                className="group inline-flex items-center gap-3"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-600 text-lg font-bold text-white shadow-lg shadow-green-600/20 transition duration-300 group-hover:rotate-3 group-hover:scale-105">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-600 text-xl font-bold text-white shadow-lg shadow-green-600/20 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
                   K
                 </div>
 
-                <span className="text-xl font-bold tracking-tight text-white">
+                <span className="text-2xl font-bold tracking-tight text-gray-900">
                   Khelaro
                 </span>
               </Link>
 
               {/* Hero content */}
-              <div className="mt-24 max-w-lg">
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-400">
-                  <Sparkles size={13} />
+              <div className="mt-20 max-w-md">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-green-200 bg-white/80 px-3.5 py-2 text-xs font-semibold text-green-700 shadow-sm">
+                  <Sparkles size={14} />
                   Built for the game
                 </div>
 
-                <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-white xl:text-5xl">
+                <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 xl:text-[46px]">
                   Find your turf.
-                  <br />
-                  <span className="text-green-500">
+                  <span className="mt-1 block text-green-600">
                     Book your game.
                   </span>
                 </h1>
 
-                <p className="mt-6 max-w-md text-base leading-7 text-gray-400">
+                <p className="mt-6 max-w-sm text-sm leading-7 text-gray-600 xl:text-base">
                   Join Khelaro and discover a simpler way
-                  to find, compare, and book sports turfs
+                  to find, compare, and book sports venues
                   around Dhaka.
                 </p>
-              </div>
 
-              {/* Feature cards */}
-              <div className="mt-10 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                {[
-                  {
-                    icon: CheckCircle2,
-                    title: "Discover turfs",
-                    text: "Find nearby playing grounds",
-                  },
-                  {
-                    icon: ShieldCheck,
-                    title: "Book securely",
-                    text: "Simple and reliable booking",
-                  },
-                  {
-                    icon: Sparkles,
-                    title: "Play more",
-                    text: "Spend less time searching",
-                  },
-                ].map((item, index) => {
-                  const Icon = item.icon;
+                {/* Visual card */}
+                <div className="relative mt-10 overflow-hidden rounded-2xl border border-green-200/80 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Your game starts here
+                      </p>
+
+                      <h3 className="mt-1 text-lg font-bold text-gray-900">
+                        Find. Book. Play.
+                      </h3>
+                    </div>
+
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
+                      <Trophy size={25} />
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center gap-2">
+                    <span className="h-1.5 flex-1 rounded-full bg-green-600" />
+                    <span className="h-1.5 flex-1 rounded-full bg-green-200" />
+                    <span className="h-1.5 flex-1 rounded-full bg-green-200" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Features */}
+            <div className="relative z-10 mt-12 border-t border-green-200/80 pt-7">
+              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">
+                Everything you need to get started
+              </p>
+
+              <div className="space-y-4">
+                {FEATURES.map((feature) => {
+                  const Icon = feature.icon;
 
                   return (
                     <div
-                      key={item.title}
-                      className="group flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-green-500/20 hover:bg-white/[0.06]"
-                      style={{
-                        animation: `slideUp 0.5s ease-out ${
-                          0.15 + index * 0.1
-                        }s both`,
-                      }}
+                      key={feature.title}
+                      className="flex items-center gap-3"
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-400 transition group-hover:scale-105">
-                        <Icon size={17} />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm">
+                        <Icon size={18} />
                       </div>
 
                       <div>
-                        <p className="text-sm font-medium text-gray-200">
-                          {item.title}
+                        <p className="text-sm font-semibold text-gray-800">
+                          {feature.title}
                         </p>
 
                         <p className="mt-0.5 text-xs text-gray-500">
-                          {item.text}
+                          {feature.description}
                         </p>
                       </div>
                     </div>
@@ -267,93 +416,87 @@ const Register = () => {
                 })}
               </div>
             </div>
-
-            <p className="relative z-10 text-xs text-gray-600">
-              © {new Date().getFullYear()} Khelaro. All
-              rights reserved.
-            </p>
           </section>
 
-          {/* =========================
-              REGISTER PANEL
-          ========================== */}
-          <section className="flex items-center p-6 sm:p-10 lg:p-12 xl:p-14">
-            <div className="mx-auto w-full max-w-md">
+          {/* Registration panel */}
+          <section className="flex items-center justify-center px-6 py-10 sm:px-10 sm:py-12 lg:px-12 xl:px-16">
+            <div className="w-full max-w-md">
+
               {/* Mobile logo */}
               <Link
                 to="/"
-                className="mb-8 inline-flex items-center gap-2.5 lg:hidden"
+                className="mb-9 inline-flex items-center gap-2.5 lg:hidden"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-lg font-bold text-white shadow-md shadow-green-600/20">
                   K
                 </div>
 
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-bold tracking-tight text-gray-900">
                   Khelaro
                 </span>
               </Link>
 
               {/* Heading */}
-              <div className="animate-[slideUp_0.5s_ease-out]">
-                <p className="text-sm font-semibold text-green-600">
+              <div className="animate-[registerFadeUp_0.5s_ease-out]">
+                <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
                   Get started
-                </p>
+                </div>
 
-                <h2 className="mt-1.5 text-3xl font-bold tracking-tight text-gray-900">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-[34px]">
                   Create your account
                 </h2>
 
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  Join Khelaro and start booking your
-                  next game.
+                <p className="mt-3 text-sm leading-6 text-gray-500">
+                  Join Khelaro and get ready for your next game.
                 </p>
               </div>
 
               {/* Error */}
               {error && (
-                <div className="mt-6 flex animate-[shake_0.4s_ease-in-out] items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                  <AlertCircle
-                    size={18}
-                    className="mt-0.5 shrink-0 text-red-500"
-                  />
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                    <AlertCircle size={17} />
+                  </div>
 
-                  <p className="text-sm leading-5 text-red-600">
+                  <p className="pt-1 text-sm leading-5 text-red-700">
                     {error}
                   </p>
                 </div>
               )}
 
-              {/* Form */}
               <form
                 onSubmit={handleSubmit}
-                className="mt-7 space-y-4"
+                className="mt-7 space-y-4 animate-[registerFadeUp_0.65s_ease-out]"
               >
                 {/* Account type */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Account type
-                  </label>
+                <fieldset disabled={isLoading}>
+                  <legend className="mb-2 block text-sm font-semibold text-gray-700">
+                    Choose account type
+                  </legend>
 
                   <div className="grid grid-cols-2 gap-3">
                     {/* Customer */}
                     <button
                       type="button"
-                      disabled={loading}
-                      onClick={() =>
-                        setRole("customer")
-                      }
-                      className={`group relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 ${
+                      onClick={() => handleRoleChange("customer")}
+                      aria-pressed={role === "customer"}
+                      className={`rounded-xl border p-4 text-left transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-500/10 ${
                         role === "customer"
-                          ? "border-green-500 bg-green-50 shadow-sm shadow-green-500/10"
-                          : "border-gray-200 bg-white hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-sm"
+                          ? "border-green-500 bg-green-50 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-center justify-between">
                         <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                             role === "customer"
                               ? "bg-green-600 text-white"
-                              : "bg-gray-100 text-gray-500 group-hover:bg-gray-200"
+                              : "bg-gray-100 text-gray-500"
                           }`}
                         >
                           <UserRound size={17} />
@@ -362,7 +505,7 @@ const Register = () => {
                         {role === "customer" && (
                           <CheckCircle2
                             size={18}
-                            className="animate-[scaleIn_0.2s_ease-out] text-green-600"
+                            className="text-green-600"
                           />
                         )}
                       </div>
@@ -379,20 +522,20 @@ const Register = () => {
                     {/* Owner */}
                     <button
                       type="button"
-                      disabled={loading}
-                      onClick={() => setRole("owner")}
-                      className={`group relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 ${
+                      onClick={() => handleRoleChange("owner")}
+                      aria-pressed={role === "owner"}
+                      className={`rounded-xl border p-4 text-left transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-500/10 ${
                         role === "owner"
-                          ? "border-green-500 bg-green-50 shadow-sm shadow-green-500/10"
-                          : "border-gray-200 bg-white hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-sm"
+                          ? "border-green-500 bg-green-50 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-center justify-between">
                         <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                             role === "owner"
                               ? "bg-green-600 text-white"
-                              : "bg-gray-100 text-gray-500 group-hover:bg-gray-200"
+                              : "bg-gray-100 text-gray-500"
                           }`}
                         >
                           <Building2 size={17} />
@@ -401,7 +544,7 @@ const Register = () => {
                         {role === "owner" && (
                           <CheckCircle2
                             size={18}
-                            className="animate-[scaleIn_0.2s_ease-out] text-green-600"
+                            className="text-green-600"
                           />
                         )}
                       </div>
@@ -415,13 +558,13 @@ const Register = () => {
                       </p>
                     </button>
                   </div>
-                </div>
+                </fieldset>
 
-                {/* Name */}
+                {/* Full name */}
                 <div>
                   <label
                     htmlFor="name"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Full name
                   </label>
@@ -429,7 +572,8 @@ const Register = () => {
                   <div className="group relative">
                     <UserRound
                       size={18}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
@@ -437,10 +581,13 @@ const Register = () => {
                       name="name"
                       type="text"
                       autoComplete="name"
-                      placeholder="Your full name"
+                      placeholder="Enter your full name"
+                      value={formData.name}
+                      onChange={handleChange}
                       required
-                      disabled={loading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:bg-gray-50"
+                      disabled={isLoading}
+                      maxLength={80}
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
                   </div>
                 </div>
@@ -449,7 +596,7 @@ const Register = () => {
                 <div>
                   <label
                     htmlFor="email"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Email address
                   </label>
@@ -457,7 +604,8 @@ const Register = () => {
                   <div className="group relative">
                     <Mail
                       size={18}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
@@ -466,9 +614,11 @@ const Register = () => {
                       type="email"
                       autoComplete="email"
                       placeholder="you@example.com"
+                      value={formData.email}
+                      onChange={handleChange}
                       required
-                      disabled={loading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:bg-gray-50"
+                      disabled={isLoading}
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
                   </div>
                 </div>
@@ -477,15 +627,19 @@ const Register = () => {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Phone number
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">
+                      (Optional)
+                    </span>
                   </label>
 
                   <div className="group relative">
                     <Phone
                       size={18}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
@@ -494,8 +648,10 @@ const Register = () => {
                       type="tel"
                       autoComplete="tel"
                       placeholder="+880 1XXXXXXXXX"
-                      disabled={loading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:bg-gray-50"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
                   </div>
                 </div>
@@ -504,7 +660,7 @@ const Register = () => {
                 <div>
                   <label
                     htmlFor="password"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Password
                   </label>
@@ -512,42 +668,33 @@ const Register = () => {
                   <div className="group relative">
                     <Lock
                       size={18}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
                       id="password"
                       name="password"
-                      type={
-                        showPassword
-                          ? "text"
-                          : "password"
-                      }
+                      type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       placeholder="Create a password"
+                      value={formData.password}
+                      onChange={handleChange}
                       required
-                      disabled={loading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:bg-gray-50"
-                      onInput={() => {
-                        // Force a lightweight re-render for strength text.
-                        setError((current) => current);
-                      }}
+                      minLength={6}
+                      disabled={isLoading}
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
 
                     <button
                       type="button"
-                      disabled={loading}
-                      onClick={() =>
-                        setShowPassword(
-                          (prev) => !prev
-                        )
-                      }
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:scale-110 hover:text-gray-700"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      disabled={isLoading}
                       aria-label={
-                        showPassword
-                          ? "Hide password"
-                          : "Show password"
+                        showPassword ? "Hide password" : "Show password"
                       }
+                      aria-pressed={showPassword}
+                      className="absolute right-3.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:cursor-not-allowed"
                     >
                       {showPassword ? (
                         <EyeOff size={18} />
@@ -557,32 +704,46 @@ const Register = () => {
                     </button>
                   </div>
 
-                  {passwordStrength.label && (
-                    <div className="mt-2">
-                      <div className="h-1 overflow-hidden rounded-full bg-gray-100">
+                  {/* Password strength */}
+                  {formData.password && (
+                    <div className="mt-3">
+                      <div
+                        className="h-1.5 overflow-hidden rounded-full bg-gray-100"
+                        role="progressbar"
+                        aria-label="Password strength"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Number.parseInt(
+                          passwordStrength.width,
+                          10
+                        )}
+                      >
                         <div
-                          className="h-full rounded-full bg-green-500 transition-all duration-300"
+                          className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
                           style={{
-                            width:
-                              passwordStrength.width,
+                            width: passwordStrength.width,
                           }}
                         />
                       </div>
 
                       <p
-                        className={`mt-1 text-[11px] font-medium ${passwordStrength.text}`}
+                        className={`mt-1.5 text-[11px] font-medium ${passwordStrength.text}`}
                       >
                         {passwordStrength.label}
                       </p>
                     </div>
                   )}
+
+                  <p className="mt-2 text-xs text-gray-400">
+                    Use at least 6 characters.
+                  </p>
                 </div>
 
                 {/* Confirm password */}
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Confirm password
                   </label>
@@ -590,38 +751,38 @@ const Register = () => {
                   <div className="group relative">
                     <Lock
                       size={18}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
                       type={
-                        showConfirmPassword
-                          ? "text"
-                          : "password"
+                        showConfirmPassword ? "text" : "password"
                       }
                       autoComplete="new-password"
-                      placeholder="Confirm your password"
+                      placeholder="Re-enter your password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
                       required
-                      disabled={loading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:bg-gray-50"
+                      disabled={isLoading}
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
 
                     <button
                       type="button"
-                      disabled={loading}
                       onClick={() =>
-                        setShowConfirmPassword(
-                          (prev) => !prev
-                        )
+                        setShowConfirmPassword((prev) => !prev)
                       }
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:scale-110 hover:text-gray-700"
+                      disabled={isLoading}
                       aria-label={
                         showConfirmPassword
-                          ? "Hide password"
-                          : "Show password"
+                          ? "Hide confirm password"
+                          : "Show confirm password"
                       }
+                      aria-pressed={showConfirmPassword}
+                      className="absolute right-3.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:cursor-not-allowed"
                     >
                       {showConfirmPassword ? (
                         <EyeOff size={18} />
@@ -630,88 +791,67 @@ const Register = () => {
                       )}
                     </button>
                   </div>
-                </div>
 
-                {/* Terms */}
-                <div className="flex items-start gap-2 pt-1">
-                  <input
-                    id="terms"
-                    type="checkbox"
-                    required
-                    disabled={loading}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  />
-
-                  <label
-                    htmlFor="terms"
-                    className="text-xs leading-5 text-gray-500"
-                  >
-                    I agree to Khelaro's{" "}
-                    <Link
-                      to="/terms"
-                      className="font-medium text-green-600 transition hover:text-green-700"
+                  {formData.confirmPassword && (
+                    <p
+                      className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${
+                        formData.password === formData.confirmPassword
+                          ? "text-green-600"
+                          : "text-red-500"
+                      }`}
                     >
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      to="/privacy"
-                      className="font-medium text-green-600 transition hover:text-green-700"
-                    >
-                      Privacy Policy
-                    </Link>
-                    .
-                  </label>
+                      {formData.password === formData.confirmPassword ? (
+                        <>
+                          <CheckCircle2 size={13} />
+                          Passwords match
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle size={13} />
+                          Passwords do not match
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="group relative mt-2 flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-green-600 text-sm font-semibold text-white shadow-lg shadow-green-600/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-xl hover:shadow-green-600/20 focus:outline-none focus:ring-4 focus:ring-green-500/20 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  disabled={isLoading}
+                  className="group relative mt-3 flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-green-600 text-sm font-semibold text-white shadow-md shadow-green-600/15 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg hover:shadow-green-600/20 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-green-500/20 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
-                  {/* Button shine */}
-                  {!loading && (
-                    <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                  )}
-
-                  {loading ? (
+                  {isLoading ? (
                     <>
-                      <Loader2
-                        size={18}
-                        className="animate-spin"
-                      />
+                      <Loader2 size={18} className="animate-spin" />
                       Creating account...
                     </>
                   ) : (
                     <>
-                      <span className="relative">
-                        Create account
-                      </span>
-
+                      Create account
                       <ArrowRight
                         size={17}
-                        className="relative transition-transform duration-300 group-hover:translate-x-1"
+                        className="transition-transform duration-300 group-hover:translate-x-1"
                       />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Login */}
+              {/* Login link */}
               <p className="mt-7 text-center text-sm text-gray-500">
                 Already have an account?{" "}
                 <Link
                   to="/login"
-                  className="font-semibold text-green-600 transition hover:text-green-700"
+                  className="font-semibold text-green-600 transition-colors hover:text-green-700"
                 >
                   Sign in
                 </Link>
               </p>
 
               {/* Security note */}
-              <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-400">
-                <ShieldCheck size={14} />
+              <div className="mt-7 flex items-center justify-center gap-2 border-t border-gray-100 pt-6 text-xs text-gray-400">
+                <ShieldCheck size={15} className="text-green-600" />
                 Your account information is securely protected.
               </div>
             </div>
@@ -719,51 +859,16 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Custom animations */}
+      {/* Animations */}
       <style>{`
-        @keyframes fadeIn {
+        @keyframes registerFadeUp {
           from {
             opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(18px);
+            transform: translateY(12px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.7);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-
-          25% {
-            transform: translateX(-5px);
-          }
-
-          75% {
-            transform: translateX(5px);
           }
         }
 

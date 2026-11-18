@@ -1,16 +1,20 @@
+
 import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
   ArrowRight,
   CheckCircle2,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
   Loader2,
   AlertCircle,
   ShieldCheck,
   Sparkles,
+  MapPin,
+  CalendarCheck,
+  Trophy,
 } from "lucide-react";
 
 import { AuthContext } from "../contexts/AuthProvider.jsx";
@@ -19,19 +23,85 @@ const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3000"
 ).replace(/\/$/, "");
 
+const FEATURES = [
+  {
+    icon: CheckCircle2,
+    title: "Verified turfs",
+    description: "Explore trusted sports venues.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Easy booking",
+    description: "Reserve your preferred time slot.",
+  },
+  {
+    icon: MapPin,
+    title: "Find nearby venues",
+    description: "Discover turfs around your area.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure experience",
+    description: "Manage your bookings confidently.",
+  },
+];
+
+const getErrorMessage = (error) => {
+  switch (error.message) {
+    case "USER_PROFILE_NOT_FOUND":
+      return "Your Firebase login was successful, but your Khelaro profile was not found. Please complete registration first.";
+
+    case "USER_EMAIL_MISMATCH":
+      return "Your Firebase email and Khelaro profile email do not match.";
+
+    case "BACKEND_CONNECTION_ERROR":
+      return "Unable to connect to the Khelaro server. Please check your internet connection or backend configuration.";
+
+    case "INVALID_ROLE":
+      return "Your account has an invalid role. Please contact the administrator.";
+
+    default:
+      break;
+  }
+
+  switch (error.code) {
+    case "auth/invalid-credential":
+      return "Invalid email or password.";
+
+    case "auth/user-not-found":
+      return "No account found with this email.";
+
+    case "auth/wrong-password":
+      return "Incorrect password.";
+
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later.";
+
+    case "auth/network-request-failed":
+      return "Network error. Please check your internet connection.";
+
+    case "auth/user-disabled":
+      return "This account has been disabled.";
+
+    default:
+      return error.message || "Login failed. Please try again.";
+  }
+};
+
 const Login = () => {
   const navigate = useNavigate();
 
-  const { login, loading: authLoading } =
-    useContext(AuthContext);
-
-  const [showPassword, setShowPassword] = useState(false);
+  const { login, loading: authLoading } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,39 +115,30 @@ const Login = () => {
       [name]: value,
     }));
 
-    if (error) {
-      setError("");
-    }
+    if (error) setError("");
   };
 
   const getMongoUser = async (email) => {
     if (!email) {
-      throw new Error(
-        "Firebase account email was not found."
-      );
+      throw new Error("Firebase account email was not found.");
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const url = `${API_URL}/users/${encodeURIComponent(
-      normalizedEmail
-    )}`;
-
     let response;
 
     try {
-      response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-    } catch (fetchError) {
-      console.error(
-        "MongoDB user fetch error:",
-        fetchError
+      response = await fetch(
+        `${API_URL}/users/${encodeURIComponent(normalizedEmail)}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
-
+    } catch (fetchError) {
+      console.error("MongoDB user fetch error:", fetchError);
       throw new Error("BACKEND_CONNECTION_ERROR");
     }
 
@@ -95,27 +156,19 @@ const Login = () => {
 
     if (!response.ok) {
       throw new Error(
-        data?.message ||
-          "Failed to load user profile."
+        data?.message || "Failed to load user profile."
       );
     }
 
     const user = data?.user;
 
-    if (!user || !user.email) {
+    if (!user || typeof user.email !== "string") {
       throw new Error("USER_PROFILE_NOT_FOUND");
     }
 
-    const databaseEmail = user.email
-      .trim()
-      .toLowerCase();
+    const databaseEmail = user.email.trim().toLowerCase();
 
     if (databaseEmail !== normalizedEmail) {
-      console.error("Email mismatch:", {
-        firebaseEmail: normalizedEmail,
-        databaseEmail,
-      });
-
       throw new Error("USER_EMAIL_MISMATCH");
     }
 
@@ -123,93 +176,63 @@ const Login = () => {
   };
 
   const redirectUser = (userData) => {
-    const role = String(
-      userData?.role || "user"
-    )
+    const role = String(userData?.role || "user")
       .trim()
       .toLowerCase();
 
-    switch (role) {
-      case "admin":
-        navigate("/admin-dashboard", {
-          replace: true,
-        });
-        break;
+    const routes = {
+      admin: "/admin-dashboard",
+      owner: "/owner-dashboard",
+      user: "/dashboard",
+    };
 
-      case "owner":
-        navigate("/owner-dashboard", {
-          replace: true,
-        });
-        break;
-
-      case "user":
-      default:
-        navigate("/dashboard", {
-          replace: true,
-        });
-        break;
-    }
+    navigate(routes[role] || routes.user, {
+      replace: true,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (isLoading) return;
+
     setError("");
 
-    const email = formData.email
-      .trim()
-      .toLowerCase();
-
+    const email = formData.email.trim().toLowerCase();
     const password = formData.password;
 
     if (!email || !password) {
-      setError(
-        "Please enter your email and password."
-      );
+      setError("Please enter your email and password.");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Firebase login
-      const firebaseUser = await login(
-        email,
-        password
-      );
+      // Step 1: Firebase authentication
+      const firebaseUser = await login(email, password);
 
       if (!firebaseUser) {
-        throw new Error(
-          "Firebase login failed. Please try again."
-        );
+        throw new Error("Firebase login failed. Please try again.");
       }
 
-      const firebaseEmail =
-        firebaseUser.email
-          ?.trim()
-          .toLowerCase();
+      const firebaseEmail = firebaseUser.email
+        ?.trim()
+        .toLowerCase();
 
       if (!firebaseEmail) {
-        throw new Error(
-          "Firebase account email was not found."
-        );
+        throw new Error("Firebase account email was not found.");
       }
 
-      // MongoDB profile
-      const mongoUser =
-        await getMongoUser(firebaseEmail);
+      // Step 2: Fetch MongoDB profile
+      const mongoUser = await getMongoUser(firebaseEmail);
 
-      const role = String(
-        mongoUser?.role || ""
-      )
+      // Step 3: Validate user role
+      const role = String(mongoUser?.role || "")
         .trim()
         .toLowerCase();
 
-      const allowedRoles = [
-        "user",
-        "owner",
-        "admin",
-      ];
+      const allowedRoles = ["user", "owner", "admin"];
 
       if (!allowedRoles.includes(role)) {
         throw new Error("INVALID_ROLE");
@@ -217,261 +240,219 @@ const Login = () => {
 
       const finalUserData = {
         ...mongoUser,
-        uid:
-          firebaseUser.uid ||
-          mongoUser.uid ||
-          "",
+        uid: firebaseUser.uid || mongoUser.uid || "",
         email: firebaseEmail,
         role,
       };
 
-      // Save user locally
+      // Step 4: Store user information
       localStorage.setItem(
         "khelaro-user",
         JSON.stringify(finalUserData)
       );
 
-      localStorage.setItem(
-        "khelaro-uid",
-        firebaseUser.uid
-      );
+      if (firebaseUser.uid) {
+        localStorage.setItem("khelaro-uid", firebaseUser.uid);
+      }
 
-      // Redirect
+      // Step 5: Redirect according to role
       redirectUser(finalUserData);
     } catch (error) {
       console.error("Login error:", error);
-
-      if (
-        error.message ===
-        "USER_PROFILE_NOT_FOUND"
-      ) {
-        setError(
-          "Login successful, but your Khelaro user profile was not found. Please complete registration first."
-        );
-        return;
-      }
-
-      if (
-        error.message ===
-        "USER_EMAIL_MISMATCH"
-      ) {
-        setError(
-          "Firebase email and Khelaro profile email do not match."
-        );
-        return;
-      }
-
-      if (
-        error.message ===
-        "BACKEND_CONNECTION_ERROR"
-      ) {
-        setError(
-          "Unable to connect to Khelaro server. Please make sure the backend is running on port 3000."
-        );
-        return;
-      }
-
-      if (
-        error.message ===
-        "INVALID_ROLE"
-      ) {
-        setError(
-          "Your account has an invalid role. Please contact the administrator."
-        );
-        return;
-      }
-
-      switch (error.code) {
-        case "auth/invalid-credential":
-          setError(
-            "Invalid email or password."
-          );
-          break;
-
-        case "auth/user-not-found":
-          setError(
-            "No account found with this email."
-          );
-          break;
-
-        case "auth/wrong-password":
-          setError(
-            "Incorrect password."
-          );
-          break;
-
-        case "auth/invalid-email":
-          setError(
-            "Please enter a valid email address."
-          );
-          break;
-
-        case "auth/too-many-requests":
-          setError(
-            "Too many failed attempts. Please try again later."
-          );
-          break;
-
-        case "auth/network-request-failed":
-          setError(
-            "Network error. Please check your internet connection."
-          );
-          break;
-
-        case "auth/user-disabled":
-          setError(
-            "This account has been disabled."
-          );
-          break;
-
-        default:
-          setError(
-            error.message ||
-              "Login failed. Please try again."
-          );
-      }
+      setError(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-[calc(100vh-72px)] overflow-hidden bg-gray-50">
-      <div className="mx-auto flex min-h-[calc(100vh-72px)] max-w-7xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="login-card grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_20px_70px_-30px_rgba(0,0,0,0.25)] lg:grid-cols-2">
+    <main className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#f8faf9] px-4 py-8 sm:px-6 lg:px-8">
+      {/* Background decoration */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-green-100/60 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-emerald-100/50 blur-3xl"
+      />
 
-          {/* LEFT SIDE */}
-          <section className="login-panel relative hidden overflow-hidden bg-gray-950 p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
-            {/* Animated background */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="login-glow login-glow-one" />
-              <div className="login-glow login-glow-two" />
+      <div className="relative mx-auto flex min-h-[calc(100vh-136px)] max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-[0_24px_80px_-35px_rgba(15,23,42,0.18)] lg:grid-cols-2">
 
-              <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full border border-green-500/10" />
-              <div className="absolute -right-10 bottom-20 h-36 w-36 rounded-full border border-green-500/10" />
-            </div>
+          {/* Left panel */}
+          <section className="relative hidden overflow-hidden bg-[#f0fdf4] p-10 lg:flex lg:flex-col lg:justify-between xl:p-14">
+            {/* Decorative elements */}
+            <div
+              aria-hidden="true"
+              className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-green-200/70"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -right-12 -top-12 h-56 w-56 rounded-full border border-green-200/70"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-green-200/30 blur-3xl"
+            />
 
             <div className="relative z-10">
               {/* Logo */}
               <Link
                 to="/"
-                className="group inline-flex items-center gap-2.5"
+                className="group inline-flex items-center gap-3"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-lg font-bold text-white shadow-lg shadow-green-600/20 transition duration-300 group-hover:rotate-[-5deg] group-hover:scale-105">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-600 text-xl font-bold text-white shadow-lg shadow-green-600/20 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
                   K
                 </div>
 
-                <span className="text-xl font-bold tracking-tight text-white">
+                <span className="text-2xl font-bold tracking-tight text-gray-900">
                   Khelaro
                 </span>
               </Link>
 
-              {/* Content */}
-              <div className="mt-24 max-w-md login-content">
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-500/10 bg-green-500/10 px-3 py-1.5 text-xs font-semibold text-green-400">
-                  <Sparkles size={13} />
+              {/* Hero content */}
+              <div className="mt-20 max-w-md">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-green-200 bg-white/80 px-3.5 py-2 text-xs font-semibold text-green-700 shadow-sm">
+                  <Sparkles size={14} />
                   Play more. Worry less.
                 </div>
 
-                <h1 className="text-4xl font-bold leading-[1.12] tracking-tight text-white xl:text-5xl">
+                <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 xl:text-[46px]">
                   Your next game is
-                  <span className="mt-1 block text-green-500">
+                  <span className="mt-1 block text-green-600">
                     just a booking away.
                   </span>
                 </h1>
 
-                <p className="mt-6 max-w-sm text-sm leading-7 text-gray-400 sm:text-base">
-                  Find the best turfs around Dhaka,
-                  check availability, and book your
-                  preferred playing slot with ease.
+                <p className="mt-6 max-w-sm text-sm leading-7 text-gray-600 xl:text-base">
+                  Discover the best sports venues, check
+                  availability, and reserve your preferred
+                  playing slot with ease.
                 </p>
+
+                {/* Visual card */}
+                <div className="relative mt-10 overflow-hidden rounded-2xl border border-green-200/80 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Your game starts here
+                      </p>
+                      <h3 className="mt-1 text-lg font-bold text-gray-900">
+                        Find. Book. Play.
+                      </h3>
+                    </div>
+
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600">
+                      <Trophy size={25} />
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center gap-2">
+                    <span className="h-1.5 flex-1 rounded-full bg-green-600" />
+                    <span className="h-1.5 flex-1 rounded-full bg-green-200" />
+                    <span className="h-1.5 flex-1 rounded-full bg-green-200" />
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Features */}
-            <div className="relative z-10 grid grid-cols-2 gap-3 border-t border-gray-800 pt-6">
-              <div className="group flex items-center gap-2.5 rounded-xl border border-gray-800 bg-gray-900/50 px-3 py-3 transition duration-300 hover:-translate-y-0.5 hover:border-gray-700 hover:bg-gray-900">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
-                  <CheckCircle2 size={16} />
-                </div>
+            <div className="relative z-10 mt-12 border-t border-green-200/80 pt-7">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">
+                Why choose Khelaro
+              </p>
 
-                <span className="text-xs font-medium text-gray-400">
-                  Verified turfs
-                </span>
-              </div>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-5">
+                {FEATURES.map((feature) => {
+                  const Icon = feature.icon;
 
-              <div className="group flex items-center gap-2.5 rounded-xl border border-gray-800 bg-gray-900/50 px-3 py-3 transition duration-300 hover:-translate-y-0.5 hover:border-gray-700 hover:bg-gray-900">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-500">
-                  <ShieldCheck size={16} />
-                </div>
+                  return (
+                    <div
+                      key={feature.title}
+                      className="flex items-start gap-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm">
+                        <Icon size={17} />
+                      </div>
 
-                <span className="text-xs font-medium text-gray-400">
-                  Easy booking
-                </span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {feature.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
 
-          {/* RIGHT SIDE */}
-          <section className="flex items-center p-6 sm:p-10 lg:p-12 xl:p-14">
-            <div className="mx-auto w-full max-w-md">
+          {/* Right panel */}
+          <section className="flex items-center justify-center px-6 py-10 sm:px-10 sm:py-12 lg:px-12 xl:px-16">
+            <div className="w-full max-w-md">
 
               {/* Mobile logo */}
               <Link
                 to="/"
-                className="mb-9 inline-flex items-center gap-2.5 lg:hidden"
+                className="mb-10 inline-flex items-center gap-2.5 lg:hidden"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-600 text-base font-bold text-white shadow-md shadow-green-600/20">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-lg font-bold text-white shadow-md shadow-green-600/20">
                   K
                 </div>
 
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-bold tracking-tight text-gray-900">
                   Khelaro
                 </span>
               </Link>
 
               {/* Heading */}
-              <div className="animate-[loginSlideUp_0.5s_ease-out]">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">
+              <div className="animate-[loginFadeUp_0.5s_ease-out]">
+                <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
                   Welcome back
-                </p>
+                </div>
 
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-[34px]">
                   Sign in to Khelaro
                 </h2>
 
-                <p className="mt-2.5 text-sm leading-6 text-gray-500">
-                  Manage your bookings and find
-                  your next game.
+                <p className="mt-3 text-sm leading-6 text-gray-500">
+                  Enter your account details to manage your
+                  bookings and find your next game.
                 </p>
               </div>
 
-              {/* Error */}
+              {/* Error message */}
               {error && (
                 <div
                   role="alert"
-                  className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 animate-[loginShake_0.35s_ease-in-out]"
+                  aria-live="polite"
+                  className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
                     <AlertCircle size={17} />
                   </div>
 
-                  <p className="pt-1 text-sm leading-5 text-red-600">
+                  <p className="pt-1 text-sm leading-5 text-red-700">
                     {error}
                   </p>
                 </div>
               )}
 
-              {/* Form */}
+              {/* Login form */}
               <form
                 onSubmit={handleSubmit}
-                className="mt-8 space-y-5 animate-[loginSlideUp_0.65s_ease-out]"
+                className="mt-8 space-y-5 animate-[loginFadeUp_0.65s_ease-out]"
               >
                 {/* Email */}
-                <div className="login-field">
+                <div>
                   <label
                     htmlFor="email"
-                    className="mb-2 block text-sm font-medium text-gray-700"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
                   >
                     Email address
                   </label>
@@ -479,7 +460,8 @@ const Login = () => {
                   <div className="group relative">
                     <Mail
                       size={18}
-                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
@@ -492,24 +474,24 @@ const Login = () => {
                       onChange={handleChange}
                       required
                       disabled={isLoading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
                   </div>
                 </div>
 
                 {/* Password */}
-                <div className="login-field">
-                  <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
                     <label
                       htmlFor="password"
-                      className="block text-sm font-medium text-gray-700"
+                      className="text-sm font-semibold text-gray-700"
                     >
                       Password
                     </label>
 
                     <Link
                       to="/forgot-password"
-                      className="text-xs font-semibold text-green-600 transition hover:text-green-700"
+                      className="text-xs font-semibold text-green-600 transition-colors hover:text-green-700"
                     >
                       Forgot password?
                     </Link>
@@ -518,96 +500,64 @@ const Login = () => {
                   <div className="group relative">
                     <Lock
                       size={18}
-                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 group-focus-within:text-green-600"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-green-600"
                     />
 
                     <input
                       id="password"
                       name="password"
-                      type={
-                        showPassword
-                          ? "text"
-                          : "password"
-                      }
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleChange}
                       required
                       disabled={isLoading}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
+                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                     />
 
                     <button
                       type="button"
                       onClick={() =>
-                        setShowPassword(
-                          (prev) => !prev
-                        )
+                        setShowPassword((prev) => !prev)
                       }
                       disabled={isLoading}
-                      className="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 hover:text-gray-700 disabled:cursor-not-allowed"
                       aria-label={
-                        showPassword
-                          ? "Hide password"
-                          : "Show password"
+                        showPassword ? "Hide password" : "Show password"
                       }
+                      aria-pressed={showPassword}
+                      className="absolute right-3.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:cursor-not-allowed"
                     >
-                      <span className="transition-transform duration-200">
-                        {showPassword ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
-                      </span>
+                      {showPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
                     </button>
                   </div>
-                </div>
-
-                {/* Remember */}
-                <div className="flex items-center gap-2 pt-0.5">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    disabled={isLoading}
-                    className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  />
-
-                  <label
-                    htmlFor="remember"
-                    className="cursor-pointer text-sm text-gray-500"
-                  >
-                    Remember me
-                  </label>
                 </div>
 
                 {/* Submit */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-green-600 text-sm font-semibold text-white shadow-sm shadow-green-600/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg hover:shadow-green-600/20 active:translate-y-0 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-green-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="group relative mt-2 flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-green-600 text-sm font-semibold text-white shadow-md shadow-green-600/15 transition-all duration-300 hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg hover:shadow-green-600/20 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-green-500/20 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-full" />
-
-                  <span className="relative flex items-center gap-2">
-                    {isLoading ? (
-                      <>
-                        <Loader2
-                          size={18}
-                          className="animate-spin"
-                        />
-                        Signing in...
-                      </>
-                    ) : (
-                      <>
-                        Sign in
-                        <ArrowRight
-                          size={17}
-                          className="transition-transform duration-300 group-hover:translate-x-1"
-                        />
-                      </>
-                    )}
-                  </span>
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign in
+                      <ArrowRight
+                        size={17}
+                        className="transition-transform duration-300 group-hover:translate-x-1"
+                      />
+                    </>
+                  )}
                 </button>
               </form>
 
@@ -616,135 +566,78 @@ const Login = () => {
                 Don't have an account?{" "}
                 <Link
                   to="/register"
-                  className="font-semibold text-green-600 transition hover:text-green-700"
+                  className="font-semibold text-green-600 transition-colors hover:text-green-700"
                 >
                   Create an account
                 </Link>
               </p>
 
               {/* Owner CTA */}
-              <div className="group relative mt-8 overflow-hidden rounded-2xl border border-green-100 bg-green-50/70 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-green-200 hover:bg-green-50 hover:shadow-md hover:shadow-green-900/5">
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-green-500/10 blur-2xl transition duration-500 group-hover:scale-150" />
+              <div className="group relative mt-9 overflow-hidden rounded-2xl border border-green-100 bg-green-50/70 p-5 transition-all duration-300 hover:border-green-200 hover:bg-green-50">
+                <div
+                  aria-hidden="true"
+                  className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-green-200/30 blur-2xl transition-transform duration-500 group-hover:scale-150"
+                />
 
-                <div className="relative">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        Own a turf?
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        List your turf on Khelaro and
-                        manage bookings online.
-                      </p>
-                    </div>
-
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm transition duration-300 group-hover:scale-105 group-hover:rotate-3">
-                      <ShieldCheck size={17} />
-                    </div>
+                <div className="relative flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm">
+                    <ShieldCheck size={19} />
                   </div>
 
-                  <Link
-                    to="/register?role=owner"
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-green-600 transition-all duration-200 hover:gap-2 hover:text-green-700"
-                  >
-                    Become a turf owner
-                    <ArrowRight size={14} />
-                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-gray-900">
+                      Own a sports turf?
+                    </h3>
+
+                    <p className="mt-1 text-xs leading-5 text-gray-500">
+                      List your venue on Khelaro and manage
+                      bookings online.
+                    </p>
+
+                    <Link
+                      to="/register?role=owner"
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 transition-all hover:gap-2.5"
+                    >
+                      Become a turf owner
+                      <ArrowRight size={14} />
+                    </Link>
+                  </div>
                 </div>
               </div>
+
+              {/* Footer */}
+              <p className="mt-8 text-center text-xs text-gray-400">
+                © {new Date().getFullYear()} Khelaro. All rights reserved.
+              </p>
             </div>
           </section>
         </div>
       </div>
 
       {/* Animations */}
-      <style>
-        {`
-          @keyframes loginSlideUp {
-            from {
-              opacity: 0;
-              transform: translateY(18px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
+      <style>{`
+        @keyframes loginFadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(12px);
           }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
 
-          @keyframes loginShake {
-            0%, 100% {
-              transform: translateX(0);
-            }
-            20% {
-              transform: translateX(-5px);
-            }
-            40% {
-              transform: translateX(5px);
-            }
-            60% {
-              transform: translateX(-3px);
-            }
-            80% {
-              transform: translateX(3px);
-            }
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
           }
-
-          @keyframes loginFloatOne {
-            0%, 100% {
-              transform: translate(0, 0);
-            }
-            50% {
-              transform: translate(18px, 20px);
-            }
-          }
-
-          @keyframes loginFloatTwo {
-            0%, 100% {
-              transform: translate(0, 0);
-            }
-            50% {
-              transform: translate(-20px, -16px);
-            }
-          }
-
-          .login-glow {
-            position: absolute;
-            border-radius: 9999px;
-            filter: blur(70px);
-            pointer-events: none;
-          }
-
-          .login-glow-one {
-            width: 260px;
-            height: 260px;
-            top: -100px;
-            right: -80px;
-            background: rgba(22, 163, 74, 0.12);
-            animation: loginFloatOne 7s ease-in-out infinite;
-          }
-
-          .login-glow-two {
-            width: 300px;
-            height: 300px;
-            bottom: -150px;
-            left: -120px;
-            background: rgba(34, 197, 94, 0.09);
-            animation: loginFloatTwo 9s ease-in-out infinite;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .login-card,
-            .login-content,
-            .login-field,
-            .login-glow,
-            .login-panel * {
-              animation: none !important;
-              transition: none !important;
-            }
-          }
-        `}
-      </style>
+        }
+      `}</style>
     </main>
   );
 };
