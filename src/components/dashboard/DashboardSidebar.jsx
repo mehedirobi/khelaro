@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
+import Logo from "../Logo";
 
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3000"
@@ -177,9 +178,7 @@ const DashboardSidebar = () => {
           aria-label="Khelaro home"
           className="group flex items-center gap-2"
         >
-          <span className="text-[26px] font-extrabold tracking-tight text-gray-900">
-            Khelaro<span className="text-green-600">.</span>
-          </span>
+          <Logo></Logo>
         </Link>
 
         <span className="rounded-md border border-green-100 bg-green-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-green-700">

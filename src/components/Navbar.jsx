@@ -27,6 +27,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
+import Logo from "./Logo";
 
 const navLinks = [
   {
@@ -347,21 +348,8 @@ const Navbar = () => {
           aria-label="Khelaro Home"
           className="group flex shrink-0 items-center gap-2.5"
         >
-          <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 shadow-sm transition-transform duration-300 group-hover:scale-105">
-            <span className="text-xl font-extrabold text-white">
-              K
-            </span>
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-          </div>
-
-          <div className="leading-none">
-            <span className="block text-[21px] font-extrabold tracking-tight text-gray-950">
-              Khelaro
-            </span>
-            <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.19em] text-gray-400">
-              Play. Book. Enjoy.
-            </span>
-          </div>
+          {/* Logo */}
+          <Logo></Logo>
         </Link>
 
         {/* Desktop Navigation */}

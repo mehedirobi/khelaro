@@ -12,6 +12,7 @@ import {
   FaInstagram,
   FaLinkedinIn,
 } from "react-icons/fa";
+import Logo from "./Logo";
 
 const platformLinks = [
   { name: "Find a Turf", path: "/turfs" },
@@ -103,13 +104,7 @@ const Footer = () => {
               aria-label="Khelaro home"
               className="inline-flex items-center gap-2.5"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-lg font-extrabold text-white shadow-sm">
-                K
-              </div>
-
-              <span className="text-xl font-extrabold tracking-tight text-gray-900">
-                Khelaro
-              </span>
+             <Logo></Logo>
             </Link>
 
             <p className="mt-3 max-w-[260px] text-[13px] leading-6 text-gray-500">
